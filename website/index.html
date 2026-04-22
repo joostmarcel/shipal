@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipal - Track Any Package in ChatGPT</title>
+  <meta name="description" content="Shipal lets you track any package from any carrier directly inside ChatGPT. Just paste your tracking number and get real-time updates.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --color-bg: #fafafa;
+      --color-surface: #ffffff;
+      --color-text: #111111;
+      --color-text-secondary: #555555;
+      --color-accent: #2563eb;
+      --color-border: #e5e7eb;
+      --color-green: #16a34a;
+      --color-blue: #2563eb;
+      --color-orange: #ea580c;
+      --color-purple: #7c3aed;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: rgba(250, 250, 250, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .nav-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      text-decoration: none;
+    }
+
+    .logo img {
+      height: 44px;
+      width: auto;
+    }
+
+    .logo span {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--color-text);
+    }
+
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 20px;
+      background: var(--color-text);
+      color: #fff;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .nav-cta svg { width: 14px; height: 14px; }
+    .nav-cta:hover { background: #333; }
+
+    /* Hero */
+    .hero {
+      padding: 160px 24px 100px;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 100px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .hero-badge .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--color-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+
+    .hero h1 .gradient {
+      background: linear-gradient(135deg, var(--color-accent), var(--color-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 1.25rem;
+      color: var(--color-text-secondary);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.7;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 32px;
+      background: var(--color-text);
+      color: #fff;
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    }
+
+    .btn-primary:hover {
+      background: #222;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    }
+
+    .btn-primary svg { width: 20px; height: 20px; }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 16px 32px;
+      background: var(--color-surface);
+      color: var(--color-text);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      border-color: #ccc;
+      background: #f9f9f9;
+    }
+
+    /* Demo */
+    .demo {
+      max-width: 680px;
+      margin: 80px auto 0;
+      padding: 0 24px;
+    }
+
+    .demo-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .demo-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .demo-tracking {
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: var(--color-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .demo-tracking svg {
+      width: 18px;
+      height: 18px;
+      color: var(--color-text-secondary);
+    }
+
+    .demo-badge {
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .demo-badge.in-transit {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .demo-event {
+      padding: 16px;
+      background: #f9fafb;
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+
+    .demo-event-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .demo-event-detail {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .demo-event-detail svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .demo-timeline { display: flex; flex-direction: column; }
+
+    .demo-timeline-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+    }
+
+    .demo-timeline-dot {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .demo-timeline-dot::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--color-border);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .demo-timeline-item:first-child .demo-timeline-dot::before {
+      background: var(--color-green);
+    }
+
+    .demo-timeline-dot::after {
+      content: '';
+      width: 2px;
+      flex: 1;
+      background: var(--color-border);
+      margin-top: 4px;
+    }
+
+    .demo-timeline-item:last-child .demo-timeline-dot::after {
+      display: none;
+    }
+
+    .demo-timeline-text {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+      padding-bottom: 4px;
+    }
+
+    .demo-timeline-text strong {
+      color: var(--color-text);
+      font-weight: 600;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* Features */
+    .features {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 120px 24px;
+    }
+
+    .features-header {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+
+    .features-header h2 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .features-header p {
+      font-size: 1.125rem;
+      color: var(--color-text-secondary);
+      max-width: 500px;
+      margin: 0 auto;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .feature-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: box-shadow 0.2s;
+    }
+
+    .feature-card:hover {
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .feature-icon svg { width: 24px; height: 24px; }
+    .feature-icon.blue { background: #dbeafe; color: var(--color-blue); }
+    .feature-icon.green { background: #dcfce7; color: var(--color-green); }
+    .feature-icon.orange { background: #ffedd5; color: var(--color-orange); }
+    .feature-icon.purple { background: #ede9fe; color: var(--color-purple); }
+
+    .feature-card h3 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .feature-card p {
+      font-size: 0.9375rem;
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+    }
+
+    /* How it works */
+    .how-it-works {
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      border-bottom: 1px solid var(--color-border);
+      padding: 120px 24px;
+    }
+
+    .how-it-works-inner {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .how-it-works h2 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 64px;
+    }
+
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+      text-align: left;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+    }
+
+    .step-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--color-text);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .step-content h3 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .step-content p {
+      font-size: 0.9375rem;
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Carriers */
+    .carriers {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 100px 24px;
+      text-align: center;
+    }
+
+    .carriers p {
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-secondary);
+      margin-bottom: 32px;
+    }
+
+    .carrier-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      opacity: 0.5;
+    }
+
+    .carrier-name {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--color-text);
+    }
+
+    /* CTA */
+    .cta {
+      padding: 100px 24px 120px;
+      text-align: center;
+    }
+
+    .cta-card {
+      max-width: 680px;
+      margin: 0 auto;
+      background: var(--color-text);
+      color: #fff;
+      border-radius: 24px;
+      padding: 64px 48px;
+    }
+
+    .cta-card h2 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+
+    .cta-card p {
+      font-size: 1.0625rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 32px;
+      max-width: 420px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 36px;
+      background: #fff;
+      color: var(--color-text);
+      border-radius: 12px;
+      text-decoration: none;
+      font-size: 1rem;
+      font-weight: 700;
+      transition: all 0.2s;
+    }
+
+    .btn-cta:hover {
+      background: #f0f0f0;
+      transform: translateY(-1px);
+    }
+
+    .btn-cta svg { width: 20px; height: 20px; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--color-border);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    footer p {
+      font-size: 0.8125rem;
+      color: var(--color-text-secondary);
+    }
+
+    footer a {
+      color: var(--color-text);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    /* Responsive */
+    @media (max-width: 640px) {
+      .hero { padding: 130px 20px 60px; }
+      .hero-actions { flex-direction: column; }
+      .btn-primary, .btn-secondary { width: 100%; justify-content: center; }
+      .demo { margin-top: 48px; padding: 0 16px; }
+      .demo-card { padding: 20px; }
+      .features { padding: 80px 20px; }
+      .how-it-works { padding: 80px 20px; }
+      .step { gap: 16px; }
+      .cta-card { padding: 48px 28px; }
+      .carrier-logos { gap: 24px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-inner">
+      <a href="#" class="logo"><img src="logo.png" alt="Shipal"><span>Shipal</span></a>
+      <a href="https://chatgpt.com/gpts" class="nav-cta" target="_blank" rel="noopener">
+        Open in ChatGPT
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      ChatGPT App
+    </div>
+    <h1>Track any package.<br><span class="gradient">Just ask.</span></h1>
+    <p>Shipal brings real-time package tracking into ChatGPT. Paste a tracking number, get instant updates &mdash; no more juggling carrier websites.</p>
+    <div class="hero-actions">
+      <a href="https://chatgpt.com/gpts" class="btn-primary" target="_blank" rel="noopener">
+        Try Shipal in ChatGPT
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+      </a>
+      <a href="#features" class="btn-secondary">See what it does</a>
+    </div>
+  </section>
+
+  <!-- Demo card -->
+  <div class="demo">
+    <div class="demo-card">
+      <div class="demo-header">
+        <div class="demo-tracking">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m8.25 3v6.75m0 0l-3-3m3 3l3-3M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/></svg>
+          JD014600009984002466
+        </div>
+        <span class="demo-badge in-transit">In Transit</span>
+      </div>
+      <div class="demo-event">
+        <div class="demo-event-title">Package departed facility</div>
+        <div class="demo-event-detail">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+          Leipzig, Germany
+        </div>
+        <div class="demo-event-detail" style="margin-top: 4px;">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Feb 24, 2026 &middot; 3:42 PM
+        </div>
+      </div>
+      <div class="demo-timeline">
+        <div class="demo-timeline-item">
+          <div class="demo-timeline-dot"></div>
+          <div class="demo-timeline-text">
+            <strong>Package departed facility</strong>
+            Leipzig, Germany &middot; Feb 24
+          </div>
+        </div>
+        <div class="demo-timeline-item">
+          <div class="demo-timeline-dot"></div>
+          <div class="demo-timeline-text">
+            <strong>Arrived at sorting center</strong>
+            Leipzig, Germany &middot; Feb 23
+          </div>
+        </div>
+        <div class="demo-timeline-item">
+          <div class="demo-timeline-dot"></div>
+          <div class="demo-timeline-text">
+            <strong>Shipment picked up</strong>
+            Shenzhen, China &middot; Feb 20
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <div class="features-header">
+      <h2>Everything you need to<br>track your packages</h2>
+      <p>No apps to install. No websites to visit. Just chat.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon blue">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        </div>
+        <h3>Any Tracking Number</h3>
+        <p>Just paste your tracking number into ChatGPT. Shipal auto-detects the carrier and fetches real-time status instantly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon green">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H18M8.25 18.75H18M2.25 14.25h1.5m0 0v-3.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125V14.25m-6.75 0h6.75m3-6.75h3.75a1.125 1.125 0 011.125 1.125v2.25M18 7.5l3 4.5"/></svg>
+        </div>
+        <h3>All Major Carriers</h3>
+        <p>DHL, UPS, FedEx, USPS, Royal Mail, DPD, GLS, and hundreds more carriers worldwide. One place for all your shipments.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon orange">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <h3>Full Event Timeline</h3>
+        <p>See every step of your package's journey &mdash; from pickup to delivery &mdash; with locations, timestamps, and a visual timeline.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon purple">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z"/></svg>
+        </div>
+        <h3>AI-Powered Answers</h3>
+        <p>Ask follow-up questions naturally. "When will it arrive?" "Is it stuck?" Shipal understands context and gives clear answers.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="how-it-works">
+    <div class="how-it-works-inner">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h3>Open Shipal in ChatGPT</h3>
+            <p>Find Shipal in the ChatGPT App Store or click the button on this page to go directly there.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h3>Paste your tracking number</h3>
+            <p>Drop any tracking number into the chat. Shipal works with all major carriers and auto-detects the right one.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h3>Get your tracking info</h3>
+            <p>See the live status, latest event, full timeline, and estimated delivery &mdash; all displayed as a clean, visual card right in your chat.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Carriers -->
+  <section class="carriers">
+    <p>Works with carriers worldwide</p>
+    <div class="carrier-logos">
+      <span class="carrier-name">DHL</span>
+      <span class="carrier-name">UPS</span>
+      <span class="carrier-name">FedEx</span>
+      <span class="carrier-name">USPS</span>
+      <span class="carrier-name">DPD</span>
+      <span class="carrier-name">GLS</span>
+      <span class="carrier-name">Royal Mail</span>
+      <span class="carrier-name">+ hundreds more</span>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta-card">
+      <h2>Ready to track smarter?</h2>
+      <p>Stop switching between carrier websites. Track all your packages in one conversation.</p>
+      <a href="https://chatgpt.com/gpts" class="btn-cta" target="_blank" rel="noopener">
+        Open Shipal in ChatGPT
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>&copy; 2026 Shipal by <a href="https://yavio.de" target="_blank" rel="noopener">Yavio</a>. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

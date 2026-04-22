@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <rect width="256" height="256" rx="48" fill="#2563EB"/>
+  <g transform="translate(128,128)">
+    <!-- Box body -->
+    <path d="M-56,8 L-56,52 Q-56,56 -52,58 L-4,80 Q0,82 4,80 L52,58 Q56,56 56,52 L56,8" fill="#1E40AF"/>
+    <!-- Box lid left -->
+    <path d="M-56,8 L0,34 L0,-18 L-52,-40 Q-56,-38 -56,8Z" fill="#93C5FD"/>
+    <!-- Box lid right -->
+    <path d="M56,8 L0,34 L0,-18 L52,-40 Q56,-38 56,8Z" fill="#60A5FA"/>
+    <!-- Box front left -->
+    <path d="M-56,8 L0,34 L0,82 L-52,60 Q-56,58 -56,52Z" fill="#3B82F6"/>
+    <!-- Box front right -->
+    <path d="M56,8 L0,34 L0,82 L52,60 Q56,58 56,52Z" fill="#2563EB"/>
+    <!-- Arrow up -->
+    <path d="M0,-72 L-20,-48 L-10,-48 L-10,-22 L10,-22 L10,-48 L20,-48 Z" fill="white"/>
+  </g>
+</svg>

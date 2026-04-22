@@ -1,0 +1,123 @@
+# Yavio Analytics Platform — self-hosted
+# Provides the ingestion API, databases, and dashboard for tracking
+# ChatGPT App usage via the @yavio/sdk.
+#
+# Setup:
+#   git submodule add https://github.com/teamyavio/yavio.git yavio
+#   ./scripts/setup-env.sh
+#   docker compose up -d
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: yavio
+      POSTGRES_USER: yavio_service
+      POSTGRES_PASSWORD: ${POSTGRES_SERVICE_PASSWORD:-yavio_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U yavio_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-yavio_dev}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--password", "${CLICKHOUSE_PASSWORD:-yavio_dev}", "--query", "SELECT 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build:
+      context: ./yavio
+      dockerfile: packages/db/Dockerfile
+    environment:
+      DATABASE_URL: postgres://yavio_service:${POSTGRES_SERVICE_PASSWORD:-yavio_dev}@postgres:5432/yavio
+      CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-yavio_dev}@clickhouse:8123
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  ingest:
+    build:
+      context: ./yavio
+      dockerfile: packages/ingest/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://yavio_service:${POSTGRES_SERVICE_PASSWORD:-yavio_dev}@postgres:5432/yavio
+      CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-yavio_dev}@clickhouse:8123
+      API_KEY_HASH_SECRET: ${API_KEY_HASH_SECRET}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: "3001"
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    ports:
+      - "${INGEST_PORT:-3001}:3001"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3001/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  dashboard:
+    build:
+      context: ./yavio
+      dockerfile: packages/dashboard/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://yavio_service:${POSTGRES_SERVICE_PASSWORD:-yavio_dev}@postgres:5432/yavio
+      CLICKHOUSE_URL: http://default:${CLICKHOUSE_PASSWORD:-yavio_dev}@clickhouse:8123
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      API_KEY_HASH_SECRET: ${API_KEY_HASH_SECRET}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    ports:
+      - "${DASHBOARD_PORT:-3000}:3000"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+
+networks:
+  frontend:
+  backend:
