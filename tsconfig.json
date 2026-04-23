@@ -5,5 +5,6 @@
     "outDir": "dist"
   },
 
-  "include": ["server/src", "web/src"]
+  "include": ["server/src", "web/src"],
+  "exclude": ["tests", "dist", "node_modules"]
 }

@@ -1,20 +1,21 @@
 {
-  "name": "yavio-package-tracking",
-  "version": "0.0.1",
+  "name": "shipal",
+  "version": "0.1.0",
   "private": true,
-  "description": "Alpic MCP Server Template",
+  "description": "Shipal — track any package in ChatGPT. MCP server powered by Skybridge and 17Track.",
   "type": "module",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "skybridge dev",
     "build": "skybridge build",
     "start": "skybridge start",
+    "test": "node --test --import tsx tests/*.spec.ts",
     "deploy": "alpic deploy"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@openai/apps-sdk-ui": "^0.2.1",
     "@tailwindcss/vite": "^4.2.1",
-    "@yavio/sdk": "^0.1.1",
     "dotenv": "^17.3.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

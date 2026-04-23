@@ -34,7 +34,6 @@ type StructuredOutput = {
   } | null;
   daysInTransit: number | null;
   estimatedDelivery: {
-    source: string;
     from: string;
     to: string;
   } | null;
@@ -226,7 +225,6 @@ const inTransitOutput: StructuredOutput = {
   },
   daysInTransit: 3,
   estimatedDelivery: {
-    source: "carrier",
     from: "2026-02-27T00:00:00Z",
     to: "2026-02-28T00:00:00Z",
   },
@@ -329,7 +327,6 @@ const exceptionOutput: StructuredOutput = {
   },
   daysInTransit: 4,
   estimatedDelivery: {
-    source: "carrier",
     from: "2026-02-27T00:00:00Z",
     to: "2026-02-27T00:00:00Z",
   },
