@@ -148,6 +148,19 @@ gcloud run domain-mappings create \
 
 Then add the DNS CNAME record pointing to `ghs.googlehosted.com` at the `yavio.de` registrar. SSL provisioning takes ~15 min to a few hours.
 
+## Analytics — Dashboard bootstrap
+
+The 5 BigQuery views that back the Looker Studio dashboard live in [`sql/analytics_views.sql`](sql/analytics_views.sql). They're idempotent — re-running is safe.
+
+Apply to a fresh environment:
+```bash
+bq query --project_id=projekt-twenty-crm --use_legacy_sql=false < sql/analytics_views.sql
+```
+
+Dashboard setup instructions (including the one-click Looker Studio Linking URL that pre-wires all 5 data sources) are in [`docs/dashboard-setup.md`](docs/dashboard-setup.md).
+
+The design doc for evolving this prototype into a client-facing multi-tenant pipeline lives in [`docs/analytics-pipeline.md`](docs/analytics-pipeline.md).
+
 ## Gotchas
 
 - **Reserved path**: Cloud Run's Google Front-End returns its own 404 for `/healthz` before requests reach the container. Use `/health` instead (or anything else).
