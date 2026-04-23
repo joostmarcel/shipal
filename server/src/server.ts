@@ -2,7 +2,6 @@ import { McpServer } from "skybridge/server";
 import { z } from "zod";
 import {
   classify17TrackError,
-  errorMessage,
   type ErrorCode,
   type UpstreamResponse,
 } from "./errors.js";
@@ -186,7 +185,7 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     emit("error", structuredContent);
     return {
       structuredContent,
-      content: [{ type: "text" as const, text: errorMessage(code, trackingNumber) }],
+      content: [],
       _meta: { events: [] as TrackingEvent[] },
     };
   }
@@ -203,7 +202,7 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     emit("error", structuredContent);
     return {
       structuredContent,
-      content: [{ type: "text" as const, text: errorMessage(code, trackingNumber) }],
+      content: [],
       _meta: { events: [] as TrackingEvent[] },
     };
   }
@@ -214,7 +213,7 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     emit("error", structuredContent);
     return {
       structuredContent,
-      content: [{ type: "text" as const, text: errorMessage("not_found", trackingNumber) }],
+      content: [],
       _meta: { events: [] as TrackingEvent[] },
     };
   }
@@ -268,15 +267,9 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
 
   emit("ok", structuredContent);
 
-  const latestDesc = latestEvent?.description ?? "No events yet";
   return {
     structuredContent,
-    content: [
-      {
-        type: "text" as const,
-        text: `Package ${trackingNumber} via ${carrierName}: ${structuredContent.status}. Latest: ${latestDesc}`,
-      },
-    ],
+    content: [],
     _meta: { events: allEvents },
   };
 }
