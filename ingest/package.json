@@ -1,0 +1,26 @@
+{
+  "name": "shipal-ingest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal bearer-authed analytics ingest for Shipal. Accepts Yavio-compatible event batches and streams them into BigQuery.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "node --test --import tsx tests/*.spec.ts"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.9.1",
+    "fastify": "^5.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
