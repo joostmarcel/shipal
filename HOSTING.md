@@ -13,7 +13,7 @@
 The single Cloud Run service serves both:
 - **Website** — Landing page at `GET /`
 - **MCP Server** — Skybridge server for the ChatGPT App, exposing the `track-package` tool and widget
-- **Health check** — `GET /healthz` returns `{"ok":true}`
+- **Health check** — `GET /health` returns `{"ok":true}` (renamed from `/healthz` because Cloud Run's front-end reserves that path and returns its own 404 before the request reaches the container)
 - **OpenAI verification token** — `GET /.well-known/openai-apps-challenge`
 
 ## Environment Variables

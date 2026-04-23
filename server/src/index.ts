@@ -40,7 +40,7 @@ server
         res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
         res.end(WEBSITE_LOGO);
         return;
-      case "/healthz":
+      case "/health":
         res.setHeader("Content-Type", "application/json");
         res.setHeader("Cache-Control", "no-store");
         res.end('{"ok":true}');

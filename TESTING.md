@@ -27,7 +27,7 @@ ngrok http 3000       # copy the https://*.ngrok-free.app URL
 Smoke-test the tunnel:
 
 ```
-curl $NGROK/healthz                                   # {"ok":true}
+curl $NGROK/health                                    # {"ok":true}
 curl $NGROK/.well-known/openai-apps-challenge         # 7GfhhbWTu5XtqH_hsZq8REfBcNXJJW2ywnqmrIogwNM
 ```
 
