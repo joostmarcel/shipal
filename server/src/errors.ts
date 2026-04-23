@@ -24,11 +24,16 @@ export function classify17TrackError(
   if (httpStatus === 401 || httpStatus === 403) return "api_key_invalid";
 
   const topCode = body?.code;
-  if (topCode === -18010) return "api_key_invalid";
+  // -18010*: auth/token family. -18019912 is the specific "realtime not authorized"
+  // code returned when a non-premium key hits /getrealtimetrackinfo.
+  if (topCode === -18010 || topCode === -18019912) return "api_key_invalid";
   if (topCode === -18019 || topCode === -18020) return "rate_limited";
   if (typeof topCode === "number" && topCode !== 0) return "upstream_unavailable";
 
   const rejection = body?.data?.rejected?.[0]?.error?.code;
+  // -18019902 = "does not register" — the handler converts this to an auto-register
+  // flow upstream; if it ever reaches this classifier, treat as not_found.
+  if (rejection === -18019902) return "not_found";
   if (rejection === -2 || rejection === -1) return "invalid_tracking_number";
   if (rejection === -3 || rejection === -4) return "not_found";
   if (typeof rejection === "number") return "invalid_tracking_number";

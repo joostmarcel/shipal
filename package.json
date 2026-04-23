@@ -10,6 +10,7 @@
     "build": "skybridge build",
     "start": "skybridge start",
     "test": "node --test --import tsx tests/*.spec.ts",
+    "test:integration": "node --env-file=.env --test --import tsx tests/*.spec.ts",
     "deploy": "alpic deploy"
   },
   "dependencies": {
