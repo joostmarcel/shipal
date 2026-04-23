@@ -137,6 +137,25 @@ function TrackPackage() {
     ? (rawEvents as TrackingEvent[])
     : [];
 
+  // 17Track returns status="NotFound" with zero events for numbers the carrier
+  // recognizes but has no events for yet (just-shipped, or data purged). Show a
+  // friendly "watching" state instead of the scary warning badge.
+  const awaitingEvents =
+    output.status === "NotFound" && !output.latestEvent && events.length === 0;
+
+  if (awaitingEvents) {
+    return (
+      <Alert
+        color="info"
+        variant="soft"
+        title={output.carrier && output.carrier !== "Unknown"
+          ? `Watching ${output.trackingNumber} via ${output.carrier}`
+          : `Watching ${output.trackingNumber}`}
+        description="The carrier hasn't reported events for this shipment yet. Check back in a few minutes — most carriers update within an hour of the first scan."
+      />
+    );
+  }
+
   const visibleEvents =
     expanded || events.length <= COLLAPSE_AT ? events : events.slice(0, COLLAPSE_AT);
 
