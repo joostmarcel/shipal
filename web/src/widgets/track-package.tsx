@@ -9,8 +9,10 @@ import { LoadingDots } from "@openai/apps-sdk-ui/components/Indicator";
 import {
   CheckCircleFilled,
   Clock,
+  Home,
   MapPin,
   Order,
+  Plane,
 } from "@openai/apps-sdk-ui/components/Icon";
 
 type TrackingEvent = {
@@ -77,7 +79,14 @@ const ERROR_COPY: Record<
 
 const COLLAPSE_AT = 10;
 
-const STATION_LABELS = ["Shipped", "In Transit", "Out for Delivery", "Delivered"] as const;
+type StationDef = { label: string; Icon: React.ComponentType<{ className?: string }> };
+
+const STATIONS: StationDef[] = [
+  { label: "Shipped", Icon: Order },
+  { label: "In Transit", Icon: Plane },
+  { label: "Out for Delivery", Icon: MapPin },
+  { label: "Delivered", Icon: Home },
+];
 
 // status → zero-based index of the currently-active station.
 // Statuses not in this map suppress the progress bar entirely
@@ -99,44 +108,77 @@ function StationsBar({ status }: { status: string }) {
   if (active === undefined) return null;
 
   const isError = ERROR_STATUSES.has(status);
+  const accentLine = isError ? "bg-danger-solid" : "bg-primary-solid";
+  const mutedLine = "bg-surface-tertiary";
 
   return (
     <div
-      className="flex items-start pt-1 pb-1"
+      className="flex items-start py-1"
       role="list"
       aria-label="Delivery progress"
     >
-      {STATION_LABELS.map((label, i) => {
+      {STATIONS.map(({ label, Icon }, i) => {
         const passed = i < active;
         const current = i === active;
-        const dotClass = current
-          ? isError
-            ? "bg-red-500"
-            : "bg-default"
-          : passed
-            ? "bg-default"
-            : "bg-gray-300";
+        const state = current ? "current" : passed ? "completed" : "not yet reached";
+
+        // Circle style per step state
+        let circleClass: string;
+        let iconClass: string;
+        if (current) {
+          circleClass = isError
+            ? "bg-danger-solid ring-4 ring-danger"
+            : "bg-primary-solid ring-4 ring-primary";
+          iconClass = "icon-sm text-inverse";
+        } else if (passed) {
+          circleClass = isError ? "bg-danger-soft" : "bg-primary-soft";
+          iconClass = isError ? "icon-sm text-danger" : "icon-sm text-primary";
+        } else {
+          circleClass = "bg-surface border border-subtle";
+          iconClass = "icon-sm text-tertiary";
+        }
+
         const labelClass = current
           ? isError
-            ? "text-red-600 font-medium"
-            : "text-default font-medium"
+            ? "text-danger font-semibold"
+            : "text-default font-semibold"
           : passed
             ? "text-default"
             : "text-tertiary";
-        const state = current ? "current" : passed ? "completed" : "not yet reached";
 
         return (
-          <div key={label} className="flex-1 flex flex-col items-center gap-2 min-w-0" role="listitem">
+          <div
+            key={label}
+            className="flex-1 flex flex-col items-center gap-1.5 min-w-0"
+            role="listitem"
+          >
             <div className="flex items-center w-full">
-              {/* line before first dot: invisible spacer for alignment */}
-              <div className={`h-px flex-1 ${i === 0 ? "bg-transparent" : i <= active ? "bg-default" : "bg-gray-200"}`} />
+              {/* line to the left of the circle */}
               <div
-                className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`}
-                aria-label={`${label} — ${state}`}
+                className={
+                  i === 0
+                    ? "flex-1 bg-transparent h-[2px]"
+                    : `h-[2px] flex-1 ${i <= active ? accentLine : mutedLine}`
+                }
               />
-              <div className={`h-px flex-1 ${i === STATION_LABELS.length - 1 ? "bg-transparent" : i < active ? "bg-default" : "bg-gray-200"}`} />
+              <div
+                className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-[box-shadow,background-color] ${circleClass}`}
+                aria-label={`${label} — ${state}`}
+              >
+                <Icon className={iconClass} />
+              </div>
+              {/* line to the right of the circle */}
+              <div
+                className={
+                  i === STATIONS.length - 1
+                    ? "flex-1 bg-transparent h-[2px]"
+                    : `h-[2px] flex-1 ${i < active ? accentLine : mutedLine}`
+                }
+              />
             </div>
-            <span className={`text-xs text-center leading-tight px-1 ${labelClass}`}>
+            <span
+              className={`text-[11px] text-center leading-tight px-0.5 ${labelClass}`}
+            >
               {label}
             </span>
           </div>

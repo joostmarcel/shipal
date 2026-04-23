@@ -6,8 +6,10 @@ import { Alert } from "@openai/apps-sdk-ui/components/Alert";
 import {
   CheckCircleFilled,
   Clock,
+  Home,
   MapPin,
   Order,
+  Plane,
 } from "@openai/apps-sdk-ui/components/Icon";
 
 /* ------------------------------------------------------------------ */
@@ -76,7 +78,14 @@ function formatDate(iso: string): string {
   }
 }
 
-const STATION_LABELS = ["Shipped", "In Transit", "Out for Delivery", "Delivered"] as const;
+type StationDef = { label: string; Icon: React.ComponentType<{ className?: string }> };
+
+const STATIONS: StationDef[] = [
+  { label: "Shipped", Icon: Order },
+  { label: "In Transit", Icon: Plane },
+  { label: "Out for Delivery", Icon: MapPin },
+  { label: "Delivered", Icon: Home },
+];
 
 const STATUS_TO_STATION: Record<string, number> = {
   InfoReceived: 0,
@@ -94,25 +103,40 @@ function StationsBar({ status }: { status: string }) {
   const active = STATUS_TO_STATION[status];
   if (active === undefined) return null;
   const isError = ERROR_STATUSES.has(status);
+  const accentLine = isError ? "bg-danger-solid" : "bg-primary-solid";
+  const mutedLine = "bg-surface-tertiary";
   return (
-    <div className="flex items-start pt-1 pb-1" role="list" aria-label="Delivery progress">
-      {STATION_LABELS.map((label, i) => {
+    <div className="flex items-start py-1" role="list" aria-label="Delivery progress">
+      {STATIONS.map(({ label, Icon }, i) => {
         const passed = i < active;
         const current = i === active;
-        const dotClass = current
-          ? isError ? "bg-red-500" : "bg-default"
-          : passed ? "bg-default" : "bg-gray-300";
+        let circleClass: string;
+        let iconClass: string;
+        if (current) {
+          circleClass = isError
+            ? "bg-danger-solid ring-4 ring-danger"
+            : "bg-primary-solid ring-4 ring-primary";
+          iconClass = "icon-sm text-inverse";
+        } else if (passed) {
+          circleClass = isError ? "bg-danger-soft" : "bg-primary-soft";
+          iconClass = isError ? "icon-sm text-danger" : "icon-sm text-primary";
+        } else {
+          circleClass = "bg-surface border border-subtle";
+          iconClass = "icon-sm text-tertiary";
+        }
         const labelClass = current
-          ? isError ? "text-red-600 font-medium" : "text-default font-medium"
+          ? isError ? "text-danger font-semibold" : "text-default font-semibold"
           : passed ? "text-default" : "text-tertiary";
         return (
-          <div key={label} className="flex-1 flex flex-col items-center gap-2 min-w-0" role="listitem">
+          <div key={label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0" role="listitem">
             <div className="flex items-center w-full">
-              <div className={`h-px flex-1 ${i === 0 ? "bg-transparent" : i <= active ? "bg-default" : "bg-gray-200"}`} />
-              <div className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
-              <div className={`h-px flex-1 ${i === STATION_LABELS.length - 1 ? "bg-transparent" : i < active ? "bg-default" : "bg-gray-200"}`} />
+              <div className={i === 0 ? "flex-1 bg-transparent h-[2px]" : `h-[2px] flex-1 ${i <= active ? accentLine : mutedLine}`} />
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${circleClass}`}>
+                <Icon className={iconClass} />
+              </div>
+              <div className={i === STATIONS.length - 1 ? "flex-1 bg-transparent h-[2px]" : `h-[2px] flex-1 ${i < active ? accentLine : mutedLine}`} />
             </div>
-            <span className={`text-xs text-center leading-tight px-1 ${labelClass}`}>{label}</span>
+            <span className={`text-[11px] text-center leading-tight px-0.5 ${labelClass}`}>{label}</span>
           </div>
         );
       })}
