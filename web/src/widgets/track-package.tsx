@@ -1,12 +1,17 @@
 import "@/index.css";
 
+import { useState } from "react";
 import { mountWidget } from "skybridge/web";
-import { useYavio } from "@yavio/sdk/react";
 import { useToolInfo } from "../helpers.js";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Alert } from "@openai/apps-sdk-ui/components/Alert";
 import { LoadingDots } from "@openai/apps-sdk-ui/components/Indicator";
-import { CheckCircleFilled, Clock, MapPin, Order } from "@openai/apps-sdk-ui/components/Icon";
+import {
+  CheckCircleFilled,
+  Clock,
+  MapPin,
+  Order,
+} from "@openai/apps-sdk-ui/components/Icon";
 
 type TrackingEvent = {
   time: string;
@@ -29,6 +34,49 @@ const STATUS_CONFIG: Record<
   NotFound: { label: "Not Found", color: "warning" },
 };
 
+const ERROR_COPY: Record<
+  string,
+  { title: string; description: (n: string) => string; color: "warning" | "danger" }
+> = {
+  invalid_tracking_number: {
+    title: "Not a tracking number",
+    description: (n) => `"${n}" is not a recognized tracking number format.`,
+    color: "warning",
+  },
+  not_found: {
+    title: "No tracking data yet",
+    description: (n) => `No tracking data is available for ${n} yet. The carrier may not have registered it.`,
+    color: "warning",
+  },
+  rate_limited: {
+    title: "Tracking service busy",
+    description: () => "The tracking service is busy right now. Please try again in a moment.",
+    color: "warning",
+  },
+  upstream_unavailable: {
+    title: "Service unavailable",
+    description: () => "The tracking service is temporarily unavailable.",
+    color: "danger",
+  },
+  api_key_invalid: {
+    title: "Tracking misconfigured",
+    description: () => "This app is not correctly configured to reach the tracking service.",
+    color: "danger",
+  },
+  timeout: {
+    title: "Lookup timed out",
+    description: (n) => `The tracking lookup for ${n} took too long. Please try again.`,
+    color: "warning",
+  },
+  unknown: {
+    title: "Tracking error",
+    description: (n) => `Could not look up ${n}.`,
+    color: "danger",
+  },
+};
+
+const COLLAPSE_AT = 10;
+
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
@@ -46,7 +94,7 @@ function formatDate(iso: string): string {
 
 function TrackPackage() {
   const { output, isPending, responseMetadata } = useToolInfo<"track-package">();
-  useYavio(responseMetadata);
+  const [expanded, setExpanded] = useState(false);
 
   if (isPending) {
     return (
@@ -68,12 +116,13 @@ function TrackPackage() {
   }
 
   if (output.error) {
+    const copy = ERROR_COPY[output.error] ?? ERROR_COPY.unknown;
     return (
       <Alert
-        color="danger"
+        color={copy.color}
         variant="soft"
-        title="Tracking error"
-        description={`Could not track ${output.trackingNumber}: ${output.error}`}
+        title={copy.title}
+        description={copy.description(output.trackingNumber)}
       />
     );
   }
@@ -83,7 +132,13 @@ function TrackPackage() {
     color: "secondary" as const,
   };
 
-  const events = (responseMetadata?.events as TrackingEvent[] | undefined) ?? [];
+  const rawEvents = (responseMetadata as { events?: unknown } | undefined)?.events;
+  const events: TrackingEvent[] = Array.isArray(rawEvents)
+    ? (rawEvents as TrackingEvent[])
+    : [];
+
+  const visibleEvents =
+    expanded || events.length <= COLLAPSE_AT ? events : events.slice(0, COLLAPSE_AT);
 
   return (
     <div
@@ -148,7 +203,7 @@ function TrackPackage() {
             <span>
               ETA: {formatDate(output.estimatedDelivery.from)}
               {output.estimatedDelivery.to && output.estimatedDelivery.to !== output.estimatedDelivery.from
-                ? ` - ${formatDate(output.estimatedDelivery.to)}`
+                ? ` – ${formatDate(output.estimatedDelivery.to)}`
                 : ""}
             </span>
           )}
@@ -162,7 +217,7 @@ function TrackPackage() {
             Tracking history
           </span>
           <div className="flex flex-col">
-            {events.map((event, i) => (
+            {visibleEvents.map((event, i) => (
               <div key={i} className="flex gap-3">
                 <div className="flex flex-col items-center">
                   {i === 0 ? (
@@ -172,7 +227,7 @@ function TrackPackage() {
                       <div className="h-1.5 w-1.5 rounded-full bg-gray-300" />
                     </div>
                   )}
-                  {i < events.length - 1 && (
+                  {i < visibleEvents.length - 1 && (
                     <div className="w-px flex-1 bg-gray-200 my-1" />
                   )}
                 </div>
@@ -190,6 +245,15 @@ function TrackPackage() {
               </div>
             ))}
           </div>
+          {events.length > COLLAPSE_AT && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="text-xs font-medium text-secondary hover:text-default mt-1 self-start"
+            >
+              {expanded ? "Show fewer" : `Show all ${events.length} events`}
+            </button>
+          )}
         </div>
       )}
     </div>
