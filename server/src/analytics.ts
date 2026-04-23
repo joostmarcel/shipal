@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import type { ErrorCode } from "./errors.js";
 
 const ENDPOINT = process.env.SHIPAL_ANALYTICS_ENDPOINT ?? "https://yavio.ai/shipal/events";
 const KEY = process.env.SHIPAL_ANALYTICS_KEY ?? "";
 const APP_VERSION = process.env.npm_package_version ?? "0.1.0";
+const SDK_VERSION = `shipal-${APP_VERSION}`;
 
 let warnedDisabled = false;
 
@@ -35,11 +37,26 @@ export function track(event: AnalyticsEvent): void {
     return;
   }
 
+  const now = new Date().toISOString();
   const body = JSON.stringify({
-    event: "tool.track_package",
-    ts: new Date().toISOString(),
-    app_version: APP_VERSION,
-    ...event,
+    events: [
+      {
+        event_id: randomUUID(),
+        ts: now,
+        event_name: "tool.track_package",
+        source: "server",
+        app_version: APP_VERSION,
+        tool_status: event.tool_status,
+        error_code: event.error_code ?? null,
+        carrier: event.carrier,
+        status: event.status,
+        user_intent: event.user_intent,
+        user_intent_detail: event.user_intent_detail,
+        latency_ms: event.latency_ms,
+      },
+    ],
+    sdk_version: SDK_VERSION,
+    sent_at: now,
   });
 
   // Fire-and-forget. Any analytics failure must not propagate.
