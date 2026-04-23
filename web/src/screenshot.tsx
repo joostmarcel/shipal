@@ -76,6 +76,50 @@ function formatDate(iso: string): string {
   }
 }
 
+const STATION_LABELS = ["Shipped", "In Transit", "Out for Delivery", "Delivered"] as const;
+
+const STATUS_TO_STATION: Record<string, number> = {
+  InfoReceived: 0,
+  InTransit: 1,
+  OutForDelivery: 2,
+  AvailableForPickup: 2,
+  DeliveryFailure: 2,
+  Exception: 1,
+  Delivered: 3,
+};
+
+const ERROR_STATUSES = new Set(["DeliveryFailure", "Exception"]);
+
+function StationsBar({ status }: { status: string }) {
+  const active = STATUS_TO_STATION[status];
+  if (active === undefined) return null;
+  const isError = ERROR_STATUSES.has(status);
+  return (
+    <div className="flex items-start pt-1 pb-1" role="list" aria-label="Delivery progress">
+      {STATION_LABELS.map((label, i) => {
+        const passed = i < active;
+        const current = i === active;
+        const dotClass = current
+          ? isError ? "bg-red-500" : "bg-default"
+          : passed ? "bg-default" : "bg-gray-300";
+        const labelClass = current
+          ? isError ? "text-red-600 font-medium" : "text-default font-medium"
+          : passed ? "text-default" : "text-tertiary";
+        return (
+          <div key={label} className="flex-1 flex flex-col items-center gap-2 min-w-0" role="listitem">
+            <div className="flex items-center w-full">
+              <div className={`h-px flex-1 ${i === 0 ? "bg-transparent" : i <= active ? "bg-default" : "bg-gray-200"}`} />
+              <div className={`h-2 w-2 rounded-full shrink-0 ${dotClass}`} />
+              <div className={`h-px flex-1 ${i === STATION_LABELS.length - 1 ? "bg-transparent" : i < active ? "bg-default" : "bg-gray-200"}`} />
+            </div>
+            <span className={`text-xs text-center leading-tight px-1 ${labelClass}`}>{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function TrackPackageWidget({
   output,
   events,
@@ -118,6 +162,9 @@ function TrackPackageWidget({
           {statusCfg.label}
         </Badge>
       </div>
+
+      {/* Progress stations */}
+      <StationsBar status={output.status} />
 
       {/* Latest event */}
       {output.latestEvent && (

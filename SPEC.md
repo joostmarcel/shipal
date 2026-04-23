@@ -57,6 +57,12 @@ Only the fields below are returned. No addresses, no customer/reference numbers,
 **Widget-only metadata (`_meta.events`)**
 - `events[]`: array of `{ time, description, location }` used to render the timeline. Location is city-level only.
 
+**LLM narration (`content[]`)**
+- Intentionally empty. The LLM reasons over `structuredContent` for follow-up questions; the widget visually carries the status. Returning narration text here caused ChatGPT to print a duplicate chat message alongside the widget card.
+
+**Widget rendering notes**
+- Displays a 4-station progress bar derived from `structuredContent.status`: Shipped → In Transit → Out for Delivery → Delivered. `DeliveryFailure` and `Exception` statuses render the current step in red. Statuses outside the mapping (e.g. `Expired`, `NotFound` outside the watching alert) suppress the progress bar.
+
 **Carrier coverage**
 Major global carriers including DHL, UPS, FedEx, USPS, Royal Mail, DPD, GLS, Hermes, China Post, Japan Post, Australia Post, and more, routed through 17Track. We do not claim a specific count.
 
