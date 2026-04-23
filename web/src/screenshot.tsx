@@ -9,8 +9,25 @@ import {
   Home,
   MapPin,
   Order,
-  Plane,
 } from "@openai/apps-sdk-ui/components/Icon";
+
+function Truck({ className }: { className?: string }) {
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M3 6a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9H3V6z" />
+      <path d="M15 9h3.38a1 1 0 0 1 .78.38l2.12 2.65a1 1 0 0 1 .22.62V15H15V9z" />
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                             */
@@ -82,7 +99,7 @@ type StationDef = { label: string; Icon: React.ComponentType<{ className?: strin
 
 const STATIONS: StationDef[] = [
   { label: "Shipped", Icon: Order },
-  { label: "In Transit", Icon: Plane },
+  { label: "In Transit", Icon: Truck },
   { label: "Out for Delivery", Icon: MapPin },
   { label: "Delivered", Icon: Home },
 ];
@@ -116,13 +133,13 @@ function StationsBar({ status }: { status: string }) {
           circleClass = isError
             ? "bg-danger-solid ring-4 ring-danger"
             : "bg-primary-solid ring-4 ring-primary";
-          iconClass = "icon-sm text-inverse";
+          iconClass = "icon-md text-inverse";
         } else if (passed) {
           circleClass = isError ? "bg-danger-soft" : "bg-primary-soft";
-          iconClass = isError ? "icon-sm text-danger" : "icon-sm text-primary";
+          iconClass = isError ? "icon-md text-danger" : "icon-md text-primary";
         } else {
           circleClass = "bg-surface border border-subtle";
-          iconClass = "icon-sm text-tertiary";
+          iconClass = "icon-md text-tertiary";
         }
         const labelClass = current
           ? isError ? "text-danger font-semibold" : "text-default font-semibold"
@@ -131,12 +148,12 @@ function StationsBar({ status }: { status: string }) {
           <div key={label} className="flex-1 flex flex-col items-center gap-1.5 min-w-0" role="listitem">
             <div className="flex items-center w-full">
               <div className={i === 0 ? "flex-1 bg-transparent h-[2px]" : `h-[2px] flex-1 ${i <= active ? accentLine : mutedLine}`} />
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${circleClass}`}>
+              <div className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 ${circleClass}`}>
                 <Icon className={iconClass} />
               </div>
               <div className={i === STATIONS.length - 1 ? "flex-1 bg-transparent h-[2px]" : `h-[2px] flex-1 ${i < active ? accentLine : mutedLine}`} />
             </div>
-            <span className={`text-[11px] text-center leading-tight px-0.5 ${labelClass}`}>{label}</span>
+            <span className={`text-xs text-center leading-tight px-0.5 ${labelClass}`}>{label}</span>
           </div>
         );
       })}
@@ -168,9 +185,9 @@ function TrackPackageWidget({
   };
 
   return (
-    <div className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col p-4">
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <Order className="icon-sm shrink-0 fill-tertiary" />
           <div className="flex flex-col min-w-0">
@@ -187,13 +204,17 @@ function TrackPackageWidget({
         </Badge>
       </div>
 
-      {/* Progress stations */}
-      <StationsBar status={output.status} />
+      {/* Progress stations — visual hero */}
+      <div className="pb-5 border-b border-subtle">
+        <StationsBar status={output.status} />
+      </div>
 
+      {/* Details block — secondary to the diagram */}
+      <div className="flex flex-col gap-3 pt-4">
       {/* Latest event */}
       {output.latestEvent && (
         <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary p-3">
-          <span className="text-xs font-medium text-secondary">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-tertiary">
             Latest update
           </span>
           <span className="text-sm text-default">
@@ -240,7 +261,7 @@ function TrackPackageWidget({
       {/* Event timeline */}
       {events.length > 0 && (
         <div className="flex flex-col">
-          <span className="text-xs font-medium text-secondary mb-2">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-tertiary mb-2">
             Tracking history
           </span>
           <div className="flex flex-col">
@@ -274,6 +295,7 @@ function TrackPackageWidget({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

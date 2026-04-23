@@ -12,8 +12,30 @@ import {
   Home,
   MapPin,
   Order,
-  Plane,
 } from "@openai/apps-sdk-ui/components/Icon";
+
+// Filled-style delivery-truck icon to match the visual weight of the SDK's
+// Order / MapPin / Home icons. Apps SDK doesn't ship a truck icon.
+function Truck({ className }: { className?: string }) {
+  return (
+    <svg
+      width="1em"
+      height="1em"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* cargo box */}
+      <path d="M3 6a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v9H3V6z" />
+      {/* cab with slanted front */}
+      <path d="M15 9h3.38a1 1 0 0 1 .78.38l2.12 2.65a1 1 0 0 1 .22.62V15H15V9z" />
+      {/* wheels (solid) */}
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
 
 type TrackingEvent = {
   time: string;
@@ -83,7 +105,7 @@ type StationDef = { label: string; Icon: React.ComponentType<{ className?: strin
 
 const STATIONS: StationDef[] = [
   { label: "Shipped", Icon: Order },
-  { label: "In Transit", Icon: Plane },
+  { label: "In Transit", Icon: Truck },
   { label: "Out for Delivery", Icon: MapPin },
   { label: "Delivered", Icon: Home },
 ];
@@ -129,13 +151,13 @@ function StationsBar({ status }: { status: string }) {
           circleClass = isError
             ? "bg-danger-solid ring-4 ring-danger"
             : "bg-primary-solid ring-4 ring-primary";
-          iconClass = "icon-sm text-inverse";
+          iconClass = "icon-md text-inverse";
         } else if (passed) {
           circleClass = isError ? "bg-danger-soft" : "bg-primary-soft";
-          iconClass = isError ? "icon-sm text-danger" : "icon-sm text-primary";
+          iconClass = isError ? "icon-md text-danger" : "icon-md text-primary";
         } else {
           circleClass = "bg-surface border border-subtle";
-          iconClass = "icon-sm text-tertiary";
+          iconClass = "icon-md text-tertiary";
         }
 
         const labelClass = current
@@ -162,7 +184,7 @@ function StationsBar({ status }: { status: string }) {
                 }
               />
               <div
-                className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 transition-[box-shadow,background-color] ${circleClass}`}
+                className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 transition-[box-shadow,background-color] ${circleClass}`}
                 aria-label={`${label} — ${state}`}
               >
                 <Icon className={iconClass} />
@@ -176,9 +198,7 @@ function StationsBar({ status }: { status: string }) {
                 }
               />
             </div>
-            <span
-              className={`text-[11px] text-center leading-tight px-0.5 ${labelClass}`}
-            >
+            <span className={`text-xs text-center leading-tight px-0.5 ${labelClass}`}>
               {label}
             </span>
           </div>
@@ -272,11 +292,11 @@ function TrackPackage() {
 
   return (
     <div
-      className="flex flex-col gap-3 p-4"
+      className="flex flex-col p-4"
       data-llm={`Tracking ${output.trackingNumber}: ${output.status}. ${output.latestEvent?.description ?? "No events"}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2 min-w-0">
           <Order className="icon-sm shrink-0 fill-tertiary" />
           <div className="flex flex-col min-w-0">
@@ -295,19 +315,23 @@ function TrackPackage() {
         </Badge>
       </div>
 
-      {/* Progress stations */}
-      <StationsBar status={output.status} />
+      {/* Progress stations — visual hero */}
+      <div className="pb-5 border-b border-subtle">
+        <StationsBar status={output.status} />
+      </div>
 
-      {/* Latest event */}
-      {output.latestEvent && (
-        <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary p-3">
-          <span className="text-xs font-medium text-secondary">
-            Latest update
-          </span>
-          <span className="text-sm text-default">
-            {output.latestEvent.description}
-          </span>
-          <div className="flex items-center gap-3 text-xs text-tertiary mt-0.5">
+      {/* Details block — secondary to the diagram */}
+      <div className="flex flex-col gap-3 pt-4">
+        {/* Latest event */}
+        {output.latestEvent && (
+          <div className="flex flex-col gap-1 rounded-lg bg-surface-secondary p-3">
+            <span className="text-[10px] font-medium uppercase tracking-wide text-tertiary">
+              Latest update
+            </span>
+            <span className="text-sm text-default">
+              {output.latestEvent.description}
+            </span>
+            <div className="flex items-center gap-3 text-xs text-tertiary mt-0.5">
             {output.latestEvent.location && (
               <span className="flex items-center gap-1">
                 <MapPin className="icon-xs fill-tertiary" />
@@ -346,7 +370,7 @@ function TrackPackage() {
       {/* Event timeline */}
       {events.length > 0 && (
         <div className="flex flex-col">
-          <span className="text-xs font-medium text-secondary mb-2">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-tertiary mb-2">
             Tracking history
           </span>
           <div className="flex flex-col">
@@ -389,6 +413,7 @@ function TrackPackage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }
