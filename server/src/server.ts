@@ -89,25 +89,56 @@ export function emptyResult(trackingNumber: string, error: ErrorCode): Structure
 
 export type FetchTrackingResult = { body: TrackInfoResponse; httpStatus: number };
 
+const TRACK_API_BASE = "https://api.17track.net/track/v2.2";
+const REGISTER_ERROR_CODE = -18019902; // "does not register, please register first"
+
+async function post17Track(
+  path: string,
+  body: unknown,
+): Promise<{ body: TrackInfoResponse; httpStatus: number }> {
+  const res = await fetch(`${TRACK_API_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "17token": SEVENTEEN_TRACK_API_KEY,
+      "User-Agent": USER_AGENT,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const parsed = (await res.json().catch(() => ({}))) as TrackInfoResponse;
+  return { body: parsed, httpStatus: res.status };
+}
+
 async function defaultFetchTracking(
   trackingNumber: string,
 ): Promise<FetchTrackingResult> {
-  const res = await fetch(
-    "https://api.17track.net/track/v2.4/getrealtimetrackinfo",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "17token": SEVENTEEN_TRACK_API_KEY,
-        "User-Agent": USER_AGENT,
-      },
-      body: JSON.stringify([{ number: trackingNumber }]),
-      signal: AbortSignal.timeout(10_000),
-    },
-  );
+  let result = await post17Track("/gettrackinfo", [{ number: trackingNumber }]);
 
-  const body = (await res.json().catch(() => ({}))) as TrackInfoResponse;
-  return { body, httpStatus: res.status };
+  // If the number hasn't been registered yet, register and retry once.
+  const rejection = result.body?.data?.rejected?.[0]?.error?.code;
+  if (rejection === REGISTER_ERROR_CODE) {
+    const reg = await post17Track("/register", [{ number: trackingNumber }]);
+    if (reg.httpStatus === 200 && (reg.body?.code ?? -1) === 0) {
+      result = await post17Track("/gettrackinfo", [{ number: trackingNumber }]);
+    } else {
+      console.warn(
+        "[shipal] 17Track /register failed:",
+        reg.httpStatus,
+        JSON.stringify(reg.body).slice(0, 200),
+      );
+    }
+  }
+
+  if (result.httpStatus !== 200 || (result.body?.code ?? 0) !== 0) {
+    console.warn(
+      "[shipal] 17Track upstream non-OK:",
+      result.httpStatus,
+      JSON.stringify(result.body).slice(0, 300),
+    );
+  }
+
+  return result;
 }
 
 // Indirection so tests can stub the upstream call without hitting 17Track.
