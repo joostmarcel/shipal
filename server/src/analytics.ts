@@ -67,8 +67,14 @@ export function track(event: AnalyticsEvent): void {
       Authorization: `Bearer ${KEY}`,
     },
     body,
-    signal: AbortSignal.timeout(2000),
-  }).catch((err) => {
-    console.warn("[analytics] event dropped:", err?.message ?? err);
-  });
+    signal: AbortSignal.timeout(5000),
+  })
+    .then((res) => {
+      if (!res.ok) {
+        console.warn(`[analytics] ingest returned ${res.status}`);
+      }
+    })
+    .catch((err) => {
+      console.warn("[analytics] event dropped:", err?.message ?? err);
+    });
 }

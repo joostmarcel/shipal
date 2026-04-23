@@ -32,20 +32,24 @@ function containsForbiddenKey(value: unknown): boolean {
   return false;
 }
 
+// All signal fields accept null — Yavio SDK and our own analytics.ts emit
+// `null` rather than omitting keys for fields that are optional-at-runtime
+// (e.g. error_code is null on success). Zod .optional() alone only accepts
+// undefined, so .nullable().optional() is the correct combination here.
 const EVENT = z
   .object({
-    event_id: z.string().optional(),
-    ts: z.string().datetime().optional(),
+    event_id: z.string().nullable().optional(),
+    ts: z.string().datetime().nullable().optional(),
     event_name: z.string().min(1).max(100),
     source: z.enum(["server", "widget"]).default("server"),
-    app_version: z.string().max(50).optional(),
-    tool_status: z.enum(["ok", "error"]).optional(),
-    error_code: z.string().max(50).optional(),
-    carrier: z.string().max(100).optional(),
-    status: z.string().max(50).optional(),
-    user_intent: z.string().max(50).optional(),
-    user_intent_detail: z.string().max(120).optional(),
-    latency_ms: z.number().int().nonnegative().max(600000).optional(),
+    app_version: z.string().max(50).nullable().optional(),
+    tool_status: z.enum(["ok", "error"]).nullable().optional(),
+    error_code: z.string().max(50).nullable().optional(),
+    carrier: z.string().max(100).nullable().optional(),
+    status: z.string().max(50).nullable().optional(),
+    user_intent: z.string().max(50).nullable().optional(),
+    user_intent_detail: z.string().max(120).nullable().optional(),
+    latency_ms: z.number().int().nonnegative().max(600000).nullable().optional(),
   })
   .passthrough();
 
