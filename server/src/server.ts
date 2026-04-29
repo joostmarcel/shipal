@@ -31,8 +31,6 @@ type TrackInfoResponse = UpstreamResponse & {
       track_info: {
         latest_status: {
           status: string;
-          sub_status: string;
-          sub_status_descr: string;
         };
         latest_event: TrackingEventRaw;
         time_metrics: {
@@ -56,8 +54,6 @@ type StructuredOutput = {
   error: ErrorCode | null;
   carrier: string;
   status: string;
-  subStatus: string;
-  subStatusDescription: string;
   latestEvent: TrackingEvent | null;
   daysInTransit: number | null;
   estimatedDelivery: { from: string; to: string } | null;
@@ -78,8 +74,6 @@ export function emptyResult(trackingNumber: string, error: ErrorCode): Structure
     error,
     carrier: "",
     status: "",
-    subStatus: "",
-    subStatusDescription: "",
     latestEvent: null,
     daysInTransit: null,
     estimatedDelivery: null,
@@ -148,7 +142,6 @@ export const _internal = {
 export type HandlerInput = {
   tracking_number: string;
   user_intent: UserIntent;
-  user_intent_detail?: string;
 };
 
 export type HandlerResult = {
@@ -158,7 +151,7 @@ export type HandlerResult = {
 };
 
 export async function handleTrackPackage(input: HandlerInput): Promise<HandlerResult> {
-  const { tracking_number: trackingNumber, user_intent: userIntent, user_intent_detail: userIntentDetail } = input;
+  const { tracking_number: trackingNumber, user_intent: userIntent } = input;
   const startedAt = Date.now();
 
   const emit = (status: "ok" | "error", result: StructuredOutput) => {
@@ -168,7 +161,6 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
       carrier: result.carrier || undefined,
       status: result.status || undefined,
       user_intent: userIntent,
-      user_intent_detail: userIntentDetail,
       latency_ms: Date.now() - startedAt,
     });
   };
@@ -257,8 +249,6 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     error: null,
     carrier: carrierName,
     status: info.latest_status?.status ?? "Unknown",
-    subStatus: info.latest_status?.sub_status ?? "",
-    subStatusDescription: info.latest_status?.sub_status_descr ?? "",
     latestEvent,
     daysInTransit: info.time_metrics?.days_of_transit ?? null,
     estimatedDelivery:
@@ -317,14 +307,7 @@ export const server = new McpServer(
           "other",
         ])
         .describe(
-          "Why the user is tracking this package, inferred from the conversation. Pick the single best match: check_eta (wants arrival date), worried_delay (package seems late), confirm_arrival (verifying delivery happened), general_status (no specific concern), delivery_problem (reporting an issue), first_check (first time looking), pre_purchase (evaluating a seller), other.",
-        ),
-      user_intent_detail: z
-        .string()
-        .max(120)
-        .optional()
-        .describe(
-          "Optional short free-text context (max 120 chars) to complement user_intent, e.g. 'needs to arrive by Friday for a gift'. Omit if the category is self-explanatory.",
+          "Categorical bucket (fixed enum, not free text) describing why the user is tracking this package, inferred from the conversation. Used only for anonymous aggregate analytics — never returned to the user, never combined with the tracking number, and never stored alongside any identifier. Pick the single best match: check_eta (wants arrival date), worried_delay (package seems late), confirm_arrival (verifying delivery happened), general_status (no specific concern), delivery_problem (reporting an issue), first_check (first time looking), pre_purchase (evaluating a seller), other.",
         ),
     },
     annotations: {

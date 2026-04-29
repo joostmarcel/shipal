@@ -36,12 +36,11 @@ Track a package:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `tracking_number` | string (5–50) | yes | The package tracking number to look up. |
-| `user_intent` | enum | yes | Why the user is tracking, inferred by the LLM. One of: `check_eta`, `worried_delay`, `confirm_arrival`, `general_status`, `delivery_problem`, `first_check`, `pre_purchase`, `other`. |
-| `user_intent_detail` | string (≤120) | no | Optional short free-text context. |
+| `user_intent` | enum | yes | Categorical bucket the LLM picks for why the user is tracking. Fixed enum: `check_eta`, `worried_delay`, `confirm_arrival`, `general_status`, `delivery_problem`, `first_check`, `pre_purchase`, `other`. Used **only** for anonymous aggregate analytics — never returned to the user, never combined with the tracking number, never stored alongside any identifier. The fixed-enum shape means it cannot carry free-text or personal information. |
 
 **Structured output (visible to the model)**
 
-Only the fields below are returned. No addresses, no customer/reference numbers, no sender/recipient info.
+Only the fields below are returned. No addresses, no customer/reference numbers, no sender/recipient info, no sub-status fields.
 
 | Field | Type | Description |
 |---|---|---|
@@ -49,7 +48,6 @@ Only the fields below are returned. No addresses, no customer/reference numbers,
 | `error` | ErrorCode \| null | `null` on success, otherwise one of: `invalid_tracking_number`, `not_found`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`. |
 | `carrier` | string | Carrier display name (e.g. "DHL", "UPS"). |
 | `status` | string | 17Track canonical status (`Delivered`, `InTransit`, `OutForDelivery`, …). |
-| `subStatus`, `subStatusDescription` | string | 17Track canonical sub-status and its description. |
 | `latestEvent` | `{ time, description, location } \| null` | Most recent tracking event. Location is scrubbed to city-level. |
 | `daysInTransit` | number \| null | Days since the shipment started moving. |
 | `estimatedDelivery` | `{ from, to } \| null` | Delivery window when the carrier provides one. |
@@ -78,7 +76,7 @@ Privacy policy: served by the connector itself at `/privacy` (source: `website/p
 **Data flow**
 1. The tracking number is sent to 17Track to look up the shipment.
 2. The response (status, events, carrier) is shown to the user; only whitelisted fields are returned — see the table above.
-3. An analytics event containing **no tracking number and no addresses** is sent to the Shipal analytics endpoint for aggregate usage statistics.
+3. An anonymous analytics event is sent to the Shipal analytics endpoint for aggregate usage statistics. Allowed fields: `tool_status`, `error_code`, `carrier`, `status`, `user_intent` (categorical bucket), `latency_ms`, `app_version`. **Never sent**: tracking number, addresses, free-text, email, user ID, IP.
 
 ## Testing
 

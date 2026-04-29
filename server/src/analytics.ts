@@ -24,7 +24,6 @@ export type AnalyticsEvent = {
   carrier?: string;
   status?: string;
   user_intent: UserIntent;
-  user_intent_detail?: string;
   latency_ms: number;
 };
 
@@ -51,7 +50,6 @@ export function track(event: AnalyticsEvent): void {
         carrier: event.carrier,
         status: event.status,
         user_intent: event.user_intent,
-        user_intent_detail: event.user_intent_detail,
         latency_ms: event.latency_ms,
       },
     ],
