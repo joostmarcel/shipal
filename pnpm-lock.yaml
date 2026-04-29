@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@yavio/analytics-shared': file:../yavio-analytics/packages/shared
+  '@yavio/analytics-shared': file:vendor/yavio-analytics-shared-0.1.0.tgz
 
 importers:
 
@@ -21,11 +21,11 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
       '@yavio/analytics-sdk-server':
-        specifier: file:../yavio-analytics/dist/sdks/yavio-analytics-sdk-server-0.1.0.tgz
-        version: file:../yavio-analytics/dist/sdks/yavio-analytics-sdk-server-0.1.0.tgz
+        specifier: file:vendor/yavio-analytics-sdk-server-0.1.0.tgz
+        version: file:vendor/yavio-analytics-sdk-server-0.1.0.tgz
       '@yavio/analytics-shared':
-        specifier: file:../yavio-analytics/packages/shared
-        version: file:../yavio-analytics/packages/shared
+        specifier: file:vendor/yavio-analytics-shared-0.1.0.tgz
+        version: file:vendor/yavio-analytics-shared-0.1.0.tgz
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
@@ -1414,12 +1414,13 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
-  '@yavio/analytics-sdk-server@file:../yavio-analytics/dist/sdks/yavio-analytics-sdk-server-0.1.0.tgz':
-    resolution: {integrity: sha512-vM20zkYHsnW6cUVWldCHbIZJkem3ho+aF2qOyDvTJQVuIwiKyOnPkg4rI4QPRPLjQtYeYghOhkoDlLI5D89FOw==, tarball: file:../yavio-analytics/dist/sdks/yavio-analytics-sdk-server-0.1.0.tgz}
+  '@yavio/analytics-sdk-server@file:vendor/yavio-analytics-sdk-server-0.1.0.tgz':
+    resolution: {integrity: sha512-vM20zkYHsnW6cUVWldCHbIZJkem3ho+aF2qOyDvTJQVuIwiKyOnPkg4rI4QPRPLjQtYeYghOhkoDlLI5D89FOw==, tarball: file:vendor/yavio-analytics-sdk-server-0.1.0.tgz}
     version: 0.1.0
 
-  '@yavio/analytics-shared@file:../yavio-analytics/packages/shared':
-    resolution: {directory: ../yavio-analytics/packages/shared, type: directory}
+  '@yavio/analytics-shared@file:vendor/yavio-analytics-shared-0.1.0.tgz':
+    resolution: {integrity: sha512-yGBU+xdOH0Jd+xPACKEM6Cl6Lw03Lekb1J8/krLPHD1IxlnsmojlHFsWv3dze0DHyQ2rSjgeAlRhQaZ0//YEww==, tarball: file:vendor/yavio-analytics-shared-0.1.0.tgz}
+    version: 0.1.0
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -4463,11 +4464,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@yavio/analytics-sdk-server@file:../yavio-analytics/dist/sdks/yavio-analytics-sdk-server-0.1.0.tgz':
+  '@yavio/analytics-sdk-server@file:vendor/yavio-analytics-sdk-server-0.1.0.tgz':
     dependencies:
-      '@yavio/analytics-shared': file:../yavio-analytics/packages/shared
+      '@yavio/analytics-shared': file:vendor/yavio-analytics-shared-0.1.0.tgz
 
-  '@yavio/analytics-shared@file:../yavio-analytics/packages/shared':
+  '@yavio/analytics-shared@file:vendor/yavio-analytics-shared-0.1.0.tgz':
     dependencies:
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
