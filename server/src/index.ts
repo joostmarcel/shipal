@@ -32,22 +32,28 @@ const PRIVACY_HTML = readFileSync(
 );
 const WEBSITE_LOGO = readFileSync(path.join(process.cwd(), "website/logo.png"));
 
-// Cloud Run terminates TLS at the frontend and forwards plain HTTP to the
-// container. Hono's node-server (used by the MCP SDK's StreamableHTTP
-// transport under the hood) decides scheme from `req.socket.encrypted` —
-// which is false inside the container — so requestInfo.url ends up as
-// http://… and Claude's widget-domain hash mismatches the public URL.
-// Honor X-Forwarded-Proto so the SDK builds the canonical https:// URL.
+// Cloud Run terminates TLS at the frontend; the container sees plain HTTP.
+// Hono (used by the MCP SDK's StreamableHTTP transport) decides the URL
+// scheme from req.socket.encrypted, which is false in this environment, so
+// requestInfo.url ends up as http://… and Claude's widget-domain check
+// (sha256 of the connector URL) mismatches the public https URL.
+// Force Hono to use the canonical https URL by rewriting req.originalUrl
+// to an absolute URL. Skybridge's mcpMiddleware copies originalUrl onto
+// req.url before invoking the transport, and Hono's newRequest takes the
+// absolute-URL short-circuit (no scheme detection) when req.url already
+// starts with http(s)://.
 server.use(((req: any, _res: any, next: any) => {
   if (
     req.headers["x-forwarded-proto"] === "https" &&
-    req.socket &&
-    !req.socket.encrypted
+    typeof req.originalUrl === "string" &&
+    req.originalUrl.startsWith("/")
   ) {
-    Object.defineProperty(req.socket, "encrypted", {
-      value: true,
-      configurable: true,
-    });
+    const host =
+      (req.headers["x-forwarded-host"] as string | undefined) ??
+      (req.headers.host as string | undefined);
+    if (host) {
+      req.originalUrl = `https://${host}${req.originalUrl}`;
+    }
   }
   next();
 }) as any);
