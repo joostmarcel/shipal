@@ -73,7 +73,7 @@ Major global carriers including DHL, UPS, FedEx, USPS, Royal Mail, DPD, GLS, Her
 
 ## Privacy
 
-Privacy policy: <https://yavio.ai/shipal/privacy>
+Privacy policy: served by the connector itself at `/privacy` (source: `website/privacy.html`). Production URL: <https://shipal-18736126069.europe-west1.run.app/privacy>.
 
 **Data flow**
 1. The tracking number is sent to 17Track to look up the shipment.

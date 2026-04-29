@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — Shipal</title>
+  <meta name="description" content="What Shipal sends, returns, and stores. Plain English.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --color-bg: #fafafa;
+      --color-surface: #ffffff;
+      --color-text: #111111;
+      --color-text-secondary: #555555;
+      --color-border: #e5e7eb;
+      --color-accent: #2563eb;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+    }
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250, 250, 250, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .nav-inner {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+    }
+    .nav-inner a {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+    }
+    .nav-inner a:hover { color: var(--color-text); }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 64px 24px 96px;
+    }
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+    .meta {
+      color: var(--color-text-secondary);
+      font-size: 0.875rem;
+      margin-bottom: 40px;
+    }
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 40px 0 12px;
+    }
+    p { margin-bottom: 16px; color: var(--color-text); }
+    ul { margin: 0 0 16px 24px; }
+    ul li { margin-bottom: 8px; }
+    code {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.9em;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    th, td {
+      text-align: left;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.9375rem;
+    }
+    th { background: #f6f6f6; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    a { color: var(--color-accent); }
+    footer {
+      border-top: 1px solid var(--color-border);
+      padding: 24px;
+      text-align: center;
+      color: var(--color-text-secondary);
+      font-size: 0.8125rem;
+    }
+    footer a { color: var(--color-text); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="/">← Back to Shipal</a>
+  </div>
+</nav>
+
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Last updated: April 29, 2026</p>
+
+  <p>Shipal is a parcel-tracking connector for ChatGPT and Claude. This page describes exactly what Shipal sends, what it returns, what it logs, and what it does <em>not</em> collect. The intent is plain language — no dark patterns, no unannounced data flows.</p>
+
+  <h2>1. What Shipal sends to 17Track</h2>
+
+  <p>When you ask Shipal to look up a parcel, Shipal sends <strong>only the tracking number you provided</strong> to <a href="https://www.17track.net/" target="_blank" rel="noopener">17Track</a>, which performs the carrier lookup. 17Track's own privacy practices apply to that request; see <a href="https://www.17track.net/en/privacy" target="_blank" rel="noopener">17Track's privacy policy</a>.</p>
+
+  <p>No other information from your conversation, no account identifiers, and no metadata about you is forwarded to 17Track.</p>
+
+  <h2>2. What Shipal returns to your chat</h2>
+
+  <p>The widget rendered in ChatGPT or Claude shows only the following fields, and the underlying tool response contains nothing else:</p>
+
+  <table>
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>trackingNumber</code></td><td>Echoes the number you provided.</td></tr>
+      <tr><td><code>carrier</code></td><td>Auto-detected carrier display name (e.g. DHL, UPS).</td></tr>
+      <tr><td><code>status</code></td><td>Canonical shipment status (Delivered, InTransit, OutForDelivery, …).</td></tr>
+      <tr><td><code>latestEvent</code></td><td>Description, timestamp, and a city-level location for the most recent tracking event. <strong>Street addresses are scrubbed before returning.</strong></td></tr>
+      <tr><td><code>daysInTransit</code></td><td>Days since the shipment started moving.</td></tr>
+      <tr><td><code>estimatedDelivery</code></td><td>The carrier's delivery window when one is reported.</td></tr>
+      <tr><td>event timeline</td><td>The chronological list of tracking events, each with description, timestamp, and city-level location. Used to render the widget timeline.</td></tr>
+      <tr><td><code>error</code></td><td>A typed error code when the lookup fails (e.g. <code>not_found</code>, <code>rate_limited</code>).</td></tr>
+    </tbody>
+  </table>
+
+  <p><strong>Shipal never returns</strong> sender or recipient addresses, customer numbers, reference numbers, local numbers, or any other identifying field that 17Track may include in its raw response. These are stripped server-side before the response is shown.</p>
+
+  <h2>3. What Shipal sends to analytics</h2>
+
+  <p>Shipal sends a single anonymous event per tool call to its analytics backend (<a href="https://github.com/teamyavio/yavio" target="_blank" rel="noopener">Yavio Analytics</a>). The event contains <strong>only</strong>:</p>
+
+  <ul>
+    <li><code>tool_status</code> — <code>ok</code> or <code>error</code>.</li>
+    <li><code>error_code</code> — typed error code on failure, otherwise <code>null</code>.</li>
+    <li><code>carrier</code> — the carrier name returned by 17Track.</li>
+    <li><code>status</code> — the canonical shipment status.</li>
+    <li><code>user_intent</code> — a categorical bucket the LLM picked for why the user is tracking, from a fixed enum: <code>check_eta</code>, <code>worried_delay</code>, <code>confirm_arrival</code>, <code>general_status</code>, <code>delivery_problem</code>, <code>first_check</code>, <code>pre_purchase</code>, <code>other</code>. <strong>This is a fixed-enum bucket, not free text — it cannot contain personal information.</strong></li>
+    <li><code>latency_ms</code> — how long the call took.</li>
+    <li><code>app_version</code> — the Shipal release that emitted the event.</li>
+  </ul>
+
+  <p><strong>Shipal does not send to analytics:</strong> the tracking number, any address (sender or recipient), any free-text user input, your email address, your account ID, your IP address, or any other identifier. The Yavio ingest also independently rejects any payload that contains a tracking number, address, customer number, reference number, email, user_id, or IP at any depth.</p>
+
+  <h2>4. Storage and retention</h2>
+
+  <p>Tracking lookups are not stored by Shipal. Anonymous analytics events are retained for 90 days for aggregate usage reporting and then deleted.</p>
+
+  <h2>5. Sharing</h2>
+
+  <p>Shipal does not sell or share data with advertisers or other third parties. The two third parties involved in fulfilling a request are 17Track (the carrier-data provider) and Google Cloud (the host).</p>
+
+  <h2>6. Your rights</h2>
+
+  <p>Because Shipal does not collect personal identifiers, there is normally nothing to access, correct, or erase. If you believe an analytics event derived from your interactions should be removed (for example, if you can identify a specific timestamped event), email <a href="mailto:hello@yavio.ai">hello@yavio.ai</a> and we will honor a deletion request within 30 days.</p>
+
+  <h2>7. Contact</h2>
+
+  <p>Shipal is operated by Yavio (yavio.ai). For privacy questions, write to <a href="mailto:hello@yavio.ai">hello@yavio.ai</a>.</p>
+
+  <h2>8. Changes</h2>
+
+  <p>If this policy changes materially, we'll update the "Last updated" date above and note the change at the top of this page. Source-of-truth is always this page; if you read about a different policy elsewhere, this page wins.</p>
+</main>
+
+<footer>
+  &copy; 2026 Shipal by <a href="https://yavio.de" target="_blank" rel="noopener">Yavio</a>.
+</footer>
+
+</body>
+</html>

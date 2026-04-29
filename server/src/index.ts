@@ -17,6 +17,10 @@ const WEBSITE_HTML = readFileSync(
   path.join(process.cwd(), "website/index.html"),
   "utf-8",
 );
+const PRIVACY_HTML = readFileSync(
+  path.join(process.cwd(), "website/privacy.html"),
+  "utf-8",
+);
 const WEBSITE_LOGO = readFileSync(path.join(process.cwd(), "website/logo.png"));
 
 server
@@ -34,6 +38,12 @@ server
         res.setHeader("Content-Type", "text/html; charset=utf-8");
         res.setHeader("Cache-Control", "no-store");
         res.end(WEBSITE_HTML);
+        return;
+      case "/privacy":
+      case "/privacy.html":
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.setHeader("Cache-Control", "public, max-age=300");
+        res.end(PRIVACY_HTML);
         return;
       case "/logo.png":
         res.setHeader("Content-Type", "image/png");
