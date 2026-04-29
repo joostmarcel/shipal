@@ -94,7 +94,7 @@ gcloud run deploy shipal \
   --min-instances 0 \
   --max-instances 5 \
   --timeout 30s \
-  --concurrency 80 \
+  --concurrency 1 \
   --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest,YAVIO_API_KEY=shipal-yavio-api-key:latest"
 ```
 
@@ -182,3 +182,4 @@ Per-app dashboard URL is `<yavio-dashboard>/t/<tenantId>/apps/<appId>` once even
 - **Platform**: build `--platform linux/amd64` — Mac is arm64 by default and Cloud Run rejects arm64 images.
 - **Python**: gcloud needs Python ≥ 3.10. System Python 3.9 crashes on some commands (e.g. `gcloud run deploy`).
 - **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `track()` is a logged no-op. The Yavio SDK swallows network errors via `onError` (default `console.error`).
+- **Concurrency=1, not 80**: Skybridge `0.33.2`'s `mcpMiddleware` shares a single `McpServer` across requests but calls `server.connect(transport)` per request. Two overlapping requests cause the second to throw `Error: Already connected to a transport`, which Cloud Run propagates as a 500 → Cloudflare returns 502 to Claude. Serializing requests per instance via `--concurrency=1` avoids the race; horizontal scaling via `--max-instances` still applies. Revisit when Skybridge ships per-request server isolation or we patch the middleware to mutex around `connect`/`close`.
