@@ -16,7 +16,7 @@ Track packages through conversation. Target: anyone expecting a delivery who wan
 - **Error**: Targeted alert per error kind (invalid number, not yet registered, service busy, service down, timeout).
 
 ## Product Context
-- **Upstream API**: 17Track Real-time Tracking API v2.4 — `POST https://api.17track.net/track/v2.4/getrealtimetrackinfo`
+- **Upstream API**: 17Track Track API v2.2 — `POST https://api.17track.net/track/v2.2/gettrackinfo` (with auto `/register` retry when the number isn't yet registered for tracking)
 - **Auth**: API key via `17token` request header (env var `SEVENTEEN_TRACK_API_KEY`)
 - **Constraints**: one tracking number per call, 10-second request timeout, carrier auto-detected by 17Track.
 - **Analytics**: a single fire-and-forget POST per call to `SHIPAL_ANALYTICS_ENDPOINT` (default `https://yavio.ai/shipal/events`). Payload contains only aggregate signals (status, carrier name, user_intent category, latency). Tracking numbers and addresses are never transmitted to analytics.
