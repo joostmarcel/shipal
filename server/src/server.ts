@@ -277,11 +277,6 @@ export const server = new McpServer(
     description: "Look up the current status and event history of a parcel by tracking number.",
     _meta: {
       ui: {
-        // Render borderless so the widget blends with the host (Claude.ai/Desktop)
-        // backdrop instead of being framed inside its own opaque card. The
-        // widget's own card-shaped sections still have backgrounds via Apps SDK
-        // tokens that adapt to the host theme.
-        prefersBorder: false,
         csp: {
           connectDomains: [],
           resourceDomains: ["https://cdn.openai.com"],
