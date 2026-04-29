@@ -32,6 +32,26 @@ const PRIVACY_HTML = readFileSync(
 );
 const WEBSITE_LOGO = readFileSync(path.join(process.cwd(), "website/logo.png"));
 
+// Cloud Run terminates TLS at the frontend and forwards plain HTTP to the
+// container. Hono's node-server (used by the MCP SDK's StreamableHTTP
+// transport under the hood) decides scheme from `req.socket.encrypted` —
+// which is false inside the container — so requestInfo.url ends up as
+// http://… and Claude's widget-domain hash mismatches the public URL.
+// Honor X-Forwarded-Proto so the SDK builds the canonical https:// URL.
+server.use(((req: any, _res: any, next: any) => {
+  if (
+    req.headers["x-forwarded-proto"] === "https" &&
+    req.socket &&
+    !req.socket.encrypted
+  ) {
+    Object.defineProperty(req.socket, "encrypted", {
+      value: true,
+      configurable: true,
+    });
+  }
+  next();
+}) as any);
+
 server
   .use("/assets/icon.svg", ((_req: any, res: any) => {
     res.setHeader("Content-Type", "image/svg+xml");
