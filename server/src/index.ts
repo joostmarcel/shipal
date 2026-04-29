@@ -2,9 +2,18 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { server } from "./server.js";
+import { attachAnalytics, flushAnalytics } from "./analytics.js";
 
 if (!process.env.SEVENTEEN_TRACK_API_KEY) {
   throw new Error("SEVENTEEN_TRACK_API_KEY is required");
+}
+
+attachAnalytics();
+
+for (const sig of ["SIGTERM", "SIGINT"] as const) {
+  process.on(sig, () => {
+    flushAnalytics().finally(() => process.exit(0));
+  });
 }
 
 const OPENAI_APPS_CHALLENGE = "7GfhhbWTu5XtqH_hsZq8REfBcNXJJW2ywnqmrIogwNM";
