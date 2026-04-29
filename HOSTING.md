@@ -32,11 +32,15 @@ The single Cloud Run service serves both:
 | Field | Value |
 |---|---|
 | Tenant name | Shipal |
-| Tenant ID | _to be filled in after running `pnpm -C tools/cli dev tenant create "Shipal"` against `https://ingest.yavio.ai`_ |
-| App ID | _to be filled in_ |
+| Tenant ID | `c3accd03-1892-4136-aebc-440bdb07ab10` |
+| App ID | `3c2eec80-f165-4dda-80b7-ebec9000263e` |
+| BigQuery dataset | `t_q8ulk9aorfovwj1b_events` (auto-created with 90-day partition expiration) |
 | Secret Manager binding | `shipal-yavio-api-key:latest` |
+| Provisioned via | `pnpm -C tools/cli dev tenant create "Shipal"` against the `yavio-control-plane` Cloud SQL instance through Cloud SQL Auth Proxy on 2026-04-29 |
 
-The SDK logs `[yavio] sending as tenant=… app=… scopes=[write:events] sdk=0.1.0` once on the first event flush; check that the values match the table above. A mismatch means the wrong key is wired.
+The SDK logs `[yavio] sending as tenant=c3accd03-… app=3c2eec80-… scopes=[write:events,admin:tenant] sdk=0.1.0` once on the first event flush; check that the values match the table above. A mismatch means the wrong key is wired.
+
+The dashboard URL for this tenant once events arrive: `https://yavio-dashboard-bj7jlafuba-ew.a.run.app/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
 
 ## Prerequisites on your machine
 
