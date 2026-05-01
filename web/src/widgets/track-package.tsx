@@ -184,7 +184,7 @@ function StationsBar({ status }: { status: string }) {
                 }
               />
               <div
-                className={`h-11 w-11 rounded-full flex items-center justify-center shrink-0 transition-[box-shadow,background-color] ${circleClass}`}
+                className={`relative z-10 h-11 w-11 rounded-full flex items-center justify-center shrink-0 transition-[box-shadow,background-color] ${circleClass}`}
                 aria-label={`${label} — ${state}`}
               >
                 <Icon className={iconClass} />
