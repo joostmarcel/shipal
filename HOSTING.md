@@ -8,7 +8,7 @@
 - **Cloud Run service:** `shipal`
 - **Service URL:** https://shipal-18736126069.europe-west1.run.app
 - **Artifact Registry:** `europe-west1-docker.pkg.dev/projekt-twenty-crm/shipal/shipal`
-- **Secret Manager:** `shipal-17track-key` (automatic replication); optionally `shipal-analytics-key`
+- **Secret Manager:** `shipal-17track-key` (automatic replication); optionally `shipal-yavio-api-key` (Yavio analytics tenant API key, scope `write:events`)
 
 ## What gets deployed
 
@@ -24,8 +24,23 @@ The single Cloud Run service serves both:
 | Variable | Source | Description |
 |---|---|---|
 | `SEVENTEEN_TRACK_API_KEY` | Secret Manager (`shipal-17track-key:latest`) | 17Track API key for package tracking. The server refuses to boot without this. |
-| `SHIPAL_ANALYTICS_ENDPOINT` | Inline env var | Analytics ingest URL. Default `https://yavio.ai/shipal/events`. |
-| `SHIPAL_ANALYTICS_KEY` | Optional secret | Bearer token for the analytics ingest. When unset, analytics is a silent no-op (fine for v1). |
+| `YAVIO_INGEST_URL` | Optional inline env var | Analytics ingest URL. Defaults to `https://ingest.yavio.ai` inside `@yavio/analytics-sdk-server`. Override only for staging tenants. |
+| `YAVIO_API_KEY` | Optional secret (`shipal-yavio-api-key:latest`) | Yavio tenant API key (scope `write:events`). Provisioned by running `pnpm -C tools/cli dev tenant create "Shipal"` in the yavio-analytics repo. When unset, `track()` is a silent no-op and a one-time warning is logged. |
+
+### Yavio tenant identity (recorded for the runbook)
+
+| Field | Value |
+|---|---|
+| Tenant name | Shipal |
+| Tenant ID | `c3accd03-1892-4136-aebc-440bdb07ab10` |
+| App ID | `3c2eec80-f165-4dda-80b7-ebec9000263e` |
+| BigQuery dataset | `t_q8ulk9aorfovwj1b_events` (auto-created with 90-day partition expiration) |
+| Secret Manager binding | `shipal-yavio-api-key:latest` |
+| Provisioned via | `pnpm -C tools/cli dev tenant create "Shipal"` against the `yavio-control-plane` Cloud SQL instance through Cloud SQL Auth Proxy on 2026-04-29 |
+
+The SDK logs `[yavio] sending as tenant=c3accd03-… app=3c2eec80-… scopes=[write:events,admin:tenant] sdk=0.1.0` once on the first event flush; check that the values match the table above. A mismatch means the wrong key is wired.
+
+The dashboard URL for this tenant once events arrive: `https://yavio-dashboard-bj7jlafuba-ew.a.run.app/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
 
 ## Prerequisites on your machine
 
@@ -79,9 +94,8 @@ gcloud run deploy shipal \
   --min-instances 0 \
   --max-instances 5 \
   --timeout 30s \
-  --concurrency 80 \
-  --set-env-vars "SHIPAL_ANALYTICS_ENDPOINT=https://yavio.ai/shipal/events" \
-  --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest"
+  --concurrency 1 \
+  --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest,YAVIO_API_KEY=shipal-yavio-api-key:latest"
 ```
 
 For subsequent deploys you can often pass only `--image` — Cloud Run keeps the previous env vars / secrets / knobs.
@@ -148,22 +162,24 @@ gcloud run domain-mappings create \
 
 Then add the DNS CNAME record pointing to `ghs.googlehosted.com` at the `yavio.de` registrar. SSL provisioning takes ~15 min to a few hours.
 
-## Analytics — Dashboard bootstrap
+## Analytics — Yavio Analytics tenant
 
-The 5 BigQuery views that back the Looker Studio dashboard live in [`sql/analytics_views.sql`](sql/analytics_views.sql). They're idempotent — re-running is safe.
+Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/analytics-sdk-server`. The Shipal-side runbook is just "make sure `YAVIO_API_KEY` is bound to the Cloud Run service"; provisioning, dashboards, retention, and per-tenant views all live on the Yavio side.
 
-Apply to a fresh environment:
+To provision (one-time, in the yavio-analytics repo):
+
 ```bash
-bq query --project_id=projekt-twenty-crm --use_legacy_sql=false < sql/analytics_views.sql
+ROOT_API_KEY=<root-key> INGEST_URL=https://ingest.yavio.ai \
+  pnpm -C tools/cli dev tenant create "Shipal"
+# capture the returned apiKey, store as Secret Manager: shipal-yavio-api-key
 ```
 
-Dashboard setup instructions (including the one-click Looker Studio Linking URL that pre-wires all 5 data sources) are in [`docs/dashboard-setup.md`](docs/dashboard-setup.md).
-
-The design doc for evolving this prototype into a client-facing multi-tenant pipeline lives in [`docs/analytics-pipeline.md`](docs/analytics-pipeline.md).
+Per-app dashboard URL is `<yavio-dashboard>/t/<tenantId>/apps/<appId>` once events have arrived (60s lag).
 
 ## Gotchas
 
 - **Reserved path**: Cloud Run's Google Front-End returns its own 404 for `/healthz` before requests reach the container. Use `/health` instead (or anything else).
 - **Platform**: build `--platform linux/amd64` — Mac is arm64 by default and Cloud Run rejects arm64 images.
 - **Python**: gcloud needs Python ≥ 3.10. System Python 3.9 crashes on some commands (e.g. `gcloud run deploy`).
-- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `SHIPAL_ANALYTICS_KEY` is unset, `track()` is a logged no-op.
+- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `track()` is a logged no-op. The Yavio SDK swallows network errors via `onError` (default `console.error`).
+- **Concurrency=1, not 80**: Skybridge `0.33.2`'s `mcpMiddleware` shares a single `McpServer` across requests but calls `server.connect(transport)` per request. Two overlapping requests cause the second to throw `Error: Already connected to a transport`, which Cloud Run propagates as a 500 → Cloudflare returns 502 to Claude. Serializing requests per instance via `--concurrency=1` avoids the race; horizontal scaling via `--max-instances` still applies. Revisit when Skybridge ships per-request server isolation or we patch the middleware to mutex around `connect`/`close`.

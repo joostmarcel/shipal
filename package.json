@@ -17,6 +17,8 @@
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@openai/apps-sdk-ui": "^0.2.1",
     "@tailwindcss/vite": "^4.2.1",
+    "@yavio/analytics-sdk-server": "file:vendor/yavio-analytics-sdk-server-0.1.0.tgz",
+    "@yavio/analytics-shared": "file:vendor/yavio-analytics-shared-0.1.0.tgz",
     "dotenv": "^17.3.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
@@ -37,5 +39,10 @@
   },
   "engines": {
     "node": ">=24.13.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "@yavio/analytics-shared": "file:vendor/yavio-analytics-shared-0.1.0.tgz"
+    }
   }
 }

@@ -5,6 +5,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
+COPY vendor ./vendor
 RUN pnpm install --frozen-lockfile
 
 COPY . .
@@ -17,6 +18,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
+COPY vendor ./vendor
 RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=build /app/dist ./dist

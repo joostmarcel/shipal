@@ -31,8 +31,6 @@ type TrackInfoResponse = UpstreamResponse & {
       track_info: {
         latest_status: {
           status: string;
-          sub_status: string;
-          sub_status_descr: string;
         };
         latest_event: TrackingEventRaw;
         time_metrics: {
@@ -56,8 +54,6 @@ type StructuredOutput = {
   error: ErrorCode | null;
   carrier: string;
   status: string;
-  subStatus: string;
-  subStatusDescription: string;
   latestEvent: TrackingEvent | null;
   daysInTransit: number | null;
   estimatedDelivery: { from: string; to: string } | null;
@@ -78,8 +74,6 @@ export function emptyResult(trackingNumber: string, error: ErrorCode): Structure
     error,
     carrier: "",
     status: "",
-    subStatus: "",
-    subStatusDescription: "",
     latestEvent: null,
     daysInTransit: null,
     estimatedDelivery: null,
@@ -148,7 +142,6 @@ export const _internal = {
 export type HandlerInput = {
   tracking_number: string;
   user_intent: UserIntent;
-  user_intent_detail?: string;
 };
 
 export type HandlerResult = {
@@ -158,7 +151,7 @@ export type HandlerResult = {
 };
 
 export async function handleTrackPackage(input: HandlerInput): Promise<HandlerResult> {
-  const { tracking_number: trackingNumber, user_intent: userIntent, user_intent_detail: userIntentDetail } = input;
+  const { tracking_number: trackingNumber, user_intent: userIntent } = input;
   const startedAt = Date.now();
 
   const emit = (status: "ok" | "error", result: StructuredOutput) => {
@@ -168,7 +161,6 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
       carrier: result.carrier || undefined,
       status: result.status || undefined,
       user_intent: userIntent,
-      user_intent_detail: userIntentDetail,
       latency_ms: Date.now() - startedAt,
     });
   };
@@ -257,8 +249,6 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     error: null,
     carrier: carrierName,
     status: info.latest_status?.status ?? "Unknown",
-    subStatus: info.latest_status?.sub_status ?? "",
-    subStatusDescription: info.latest_status?.sub_status_descr ?? "",
     latestEvent,
     daysInTransit: info.time_metrics?.days_of_transit ?? null,
     estimatedDelivery:
@@ -284,7 +274,7 @@ export const server = new McpServer(
 ).registerWidget(
   "track-package",
   {
-    description: "Track a package shipment",
+    description: "Look up the current status and event history of a parcel by tracking number.",
     _meta: {
       ui: {
         csp: {
@@ -296,7 +286,7 @@ export const server = new McpServer(
   },
   {
     description:
-      "Use when the user wants to check the status of a shipment or delivery. Takes one tracking number per call and returns the current delivery status, carrier name, the latest tracking event, a recent event history, days in transit, and an estimated delivery window when the carrier provides one. The carrier is detected automatically from the tracking number — do not ask the user to specify it. If the number is unrecognized or not yet registered by the carrier, the response indicates that. Do not invent or assume tracking data beyond what the response contains.\n\nPresentation rules: after calling this tool, respond with an empty message. The widget renders every piece of relevant information — tracking number, carrier, status, progress stations, latest event, timeline — so any accompanying chat text is a visible duplicate. Do not summarize, confirm, narrate, or restate the result. Only speak again if the user asks a follow-up question (e.g. 'when will it arrive?', 'is it delivered?') or if the structuredContent contains an `error` that the user needs guidance on.",
+      "Look up the current status of a parcel by its tracking number via the 17Track service. The tool returns: the carrier name (auto-detected from the number — never ask the user), the canonical shipment status (Delivered, InTransit, OutForDelivery, etc.), the most recent tracking event (description, scrubbed-to-city location, timestamp), days in transit, and the carrier's estimated delivery window when one is available. The widget additionally renders a chronological event history. On error the response carries a typed `error` code (`invalid_tracking_number`, `not_found`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`) and the widget displays a targeted alert. Take one tracking number per call. Do not invent or assume tracking data beyond what the response contains. Do not narrate or summarize the rendered widget; speak again only if the user asks a follow-up (e.g. 'is it delivered?', 'when will it arrive?').",
     inputSchema: {
       tracking_number: z
         .string()
@@ -317,17 +307,11 @@ export const server = new McpServer(
           "other",
         ])
         .describe(
-          "Why the user is tracking this package, inferred from the conversation. Pick the single best match: check_eta (wants arrival date), worried_delay (package seems late), confirm_arrival (verifying delivery happened), general_status (no specific concern), delivery_problem (reporting an issue), first_check (first time looking), pre_purchase (evaluating a seller), other.",
-        ),
-      user_intent_detail: z
-        .string()
-        .max(120)
-        .optional()
-        .describe(
-          "Optional short free-text context (max 120 chars) to complement user_intent, e.g. 'needs to arrive by Friday for a gift'. Omit if the category is self-explanatory.",
+          "Categorical bucket (fixed enum, not free text) describing why the user is tracking this package, inferred from the conversation. Used only for anonymous aggregate analytics — never returned to the user, never combined with the tracking number, and never stored alongside any identifier. Pick the single best match: check_eta (wants arrival date), worried_delay (package seems late), confirm_arrival (verifying delivery happened), general_status (no specific concern), delivery_problem (reporting an issue), first_check (first time looking), pre_purchase (evaluating a seller), other.",
         ),
     },
     annotations: {
+      title: "Track a package",
       readOnlyHint: true,
       openWorldHint: true,
       destructiveHint: false,
