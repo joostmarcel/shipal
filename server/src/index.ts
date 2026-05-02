@@ -16,7 +16,7 @@ for (const sig of ["SIGTERM", "SIGINT"] as const) {
   });
 }
 
-const OPENAI_APPS_CHALLENGE = "7GfhhbWTu5XtqH_hsZq8REfBcNXJJW2ywnqmrIogwNM";
+const OPENAI_APPS_CHALLENGE = "5JTGZ1w0jaEJjs1MaI5gEFX2h_1_f9u4_bAUW-FYLkk";
 
 const ICON_SVG = readFileSync(
   path.join(process.cwd(), "server/assets/icon.svg"),
