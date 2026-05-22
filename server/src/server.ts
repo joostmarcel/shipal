@@ -5,6 +5,8 @@ import {
   type ErrorCode,
   type UpstreamResponse,
 } from "./errors.js";
+import { resolveCarrier } from "./carriers.js";
+import { isRetriableHttp, withRetry } from "./retry.js";
 import { track, type UserIntent } from "./analytics.js";
 
 const SEVENTEEN_TRACK_API_KEY = process.env.SEVENTEEN_TRACK_API_KEY ?? "";
@@ -85,35 +87,73 @@ export type FetchTrackingResult = { body: TrackInfoResponse; httpStatus: number 
 const TRACK_API_BASE = "https://api.17track.net/track/v2.2";
 const REGISTER_ERROR_CODE = -18019902; // "does not register, please register first"
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// A single 17Track item. `carrier` (the numeric 17Track carrier code) is only set
+// when the user named a carrier; otherwise 17Track auto-detects it from the number.
+type TrackItem = { number: string; carrier?: number };
+
 async function post17Track(
   path: string,
   body: unknown,
 ): Promise<{ body: TrackInfoResponse; httpStatus: number }> {
-  const res = await fetch(`${TRACK_API_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "17token": SEVENTEEN_TRACK_API_KEY,
-      "User-Agent": USER_AGENT,
+  // Retry transient failures (429 / 5xx / timeout / network) with jittered backoff.
+  // Per-attempt timeout is 7s so the worst case stays acceptable for a chat UI.
+  return withRetry(
+    async () => {
+      const res = await fetch(`${TRACK_API_BASE}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "17token": SEVENTEEN_TRACK_API_KEY,
+          "User-Agent": USER_AGENT,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(7_000),
+      });
+      const parsed = (await res.json().catch(() => ({}))) as TrackInfoResponse;
+      return { body: parsed, httpStatus: res.status };
     },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const parsed = (await res.json().catch(() => ({}))) as TrackInfoResponse;
-  return { body: parsed, httpStatus: res.status };
+    {
+      maxRetries: 2,
+      baseDelayMs: 400,
+      isRetriable: (r) => isRetriableHttp(r.httpStatus),
+      // TimeoutError = AbortSignal.timeout; TypeError = fetch network failure.
+      isRetriableError: (e) => e.name === "TimeoutError" || e.name === "TypeError",
+    },
+  );
+}
+
+// A freshly registered number often has no scan data on the immediate read; treat
+// "no accepted entries" or "still unregistered" as worth one short re-poll.
+function isEmptyTrackResult(result: FetchTrackingResult): boolean {
+  const accepted = result.body?.data?.accepted ?? [];
+  const stillUnregistered =
+    result.body?.data?.rejected?.[0]?.error?.code === REGISTER_ERROR_CODE;
+  return accepted.length === 0 || stillUnregistered;
 }
 
 async function defaultFetchTracking(
   trackingNumber: string,
+  carrier: number | null,
 ): Promise<FetchTrackingResult> {
-  let result = await post17Track("/gettrackinfo", [{ number: trackingNumber }]);
+  const item: TrackItem =
+    carrier == null ? { number: trackingNumber } : { number: trackingNumber, carrier };
 
-  // If the number hasn't been registered yet, register and retry once.
+  let result = await _internal.post("/gettrackinfo", [item]);
+
+  // If the number hasn't been registered yet, register and retry.
   const rejection = result.body?.data?.rejected?.[0]?.error?.code;
   if (rejection === REGISTER_ERROR_CODE) {
-    const reg = await post17Track("/register", [{ number: trackingNumber }]);
+    const reg = await _internal.post("/register", [item]);
     if (reg.httpStatus === 200 && (reg.body?.code ?? -1) === 0) {
-      result = await post17Track("/gettrackinfo", [{ number: trackingNumber }]);
+      result = await _internal.post("/gettrackinfo", [item]);
+      // 17Track may take a few seconds to populate the first scan after register.
+      // Re-poll once before giving up so just-shipped numbers return data.
+      if (isEmptyTrackResult(result)) {
+        await sleep(_internal.repollDelayMs);
+        result = await _internal.post("/gettrackinfo", [item]);
+      }
     } else {
       console.warn(
         "[shipal] 17Track /register failed:",
@@ -135,13 +175,27 @@ async function defaultFetchTracking(
 }
 
 // Indirection so tests can stub the upstream call without hitting 17Track.
+// `post` is the network seam used by defaultFetchTracking; `fetchTracking` is the
+// higher-level seam used by handler tests. `repollDelayMs` is overridable so tests
+// don't actually wait.
 export const _internal = {
-  fetchTracking: defaultFetchTracking as (tn: string) => Promise<FetchTrackingResult>,
+  fetchTracking: defaultFetchTracking as (
+    tn: string,
+    carrier: number | null,
+  ) => Promise<FetchTrackingResult>,
+  post: post17Track as (
+    path: string,
+    body: unknown,
+  ) => Promise<FetchTrackingResult>,
+  repollDelayMs: 1500,
 };
+
+export { defaultFetchTracking };
 
 export type HandlerInput = {
   tracking_number: string;
   user_intent: UserIntent;
+  carrier?: string;
 };
 
 export type HandlerResult = {
@@ -165,9 +219,11 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
     });
   };
 
+  const carrierCode = resolveCarrier(input.carrier);
+
   let fetched: FetchTrackingResult;
   try {
-    fetched = await _internal.fetchTracking(trackingNumber);
+    fetched = await _internal.fetchTracking(trackingNumber, carrierCode);
   } catch (err) {
     const code: ErrorCode =
       err instanceof Error && err.name === "TimeoutError"
@@ -286,7 +342,7 @@ export const server = new McpServer(
   },
   {
     description:
-      "Look up the current status of a parcel by its tracking number via the 17Track service. The tool returns: the carrier name (auto-detected from the number — never ask the user), the canonical shipment status (Delivered, InTransit, OutForDelivery, etc.), the most recent tracking event (description, scrubbed-to-city location, timestamp), days in transit, and the carrier's estimated delivery window when one is available. The widget additionally renders a chronological event history. On error the response carries a typed `error` code (`invalid_tracking_number`, `not_found`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`) and the widget displays a targeted alert. Take one tracking number per call. Do not invent or assume tracking data beyond what the response contains. Do not narrate or summarize the rendered widget; speak again only if the user asks a follow-up (e.g. 'is it delivered?', 'when will it arrive?').",
+      "Look up the current status of a parcel by its tracking number via the 17Track service. The tool returns: the carrier name (auto-detected from the number — never ask the user), the canonical shipment status (Delivered, InTransit, OutForDelivery, etc.), the most recent tracking event (description, scrubbed-to-city location, timestamp), days in transit, and the carrier's estimated delivery window when one is available. The widget additionally renders a chronological event history. On error the response carries a typed `error` code (`invalid_tracking_number`, `not_found`, `carrier_not_detected`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`) and the widget displays a targeted alert. If `error` is `carrier_not_detected`, the number's carrier could not be auto-detected — ask the user which carrier shipped it and call again with that name in `carrier`. Take one tracking number per call. Do not invent or assume tracking data beyond what the response contains. Do not narrate or summarize the rendered widget; speak again only if the user asks a follow-up (e.g. 'is it delivered?', 'when will it arrive?').",
     inputSchema: {
       tracking_number: z
         .string()
@@ -294,6 +350,13 @@ export const server = new McpServer(
         .max(50)
         .describe(
           'The package tracking number to look up, e.g. "1Z999AA10123456784" or "JD014600004033839702".',
+        ),
+      carrier: z
+        .string()
+        .max(60)
+        .optional()
+        .describe(
+          'OPTIONAL carrier name. Normally leave this UNSET — 17Track auto-detects the carrier from the number. Only set it when the user names or clearly implies a carrier (e.g. "my UPS package", "the DHL parcel"), or when a previous lookup returned error "carrier_not_detected" and the user has since told you the carrier. Use a plain name like "UPS", "DHL", "USPS", "Royal Mail", "FedEx", "DPD".',
         ),
       user_intent: z
         .enum([

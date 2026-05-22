@@ -1,6 +1,7 @@
 export type ErrorCode =
   | "invalid_tracking_number"
   | "not_found"
+  | "carrier_not_detected"
   | "rate_limited"
   | "upstream_unavailable"
   | "api_key_invalid"
@@ -34,6 +35,10 @@ export function classify17TrackError(
   // -18019902 = "does not register" — the handler converts this to an auto-register
   // flow upstream; if it ever reaches this classifier, treat as not_found.
   if (rejection === -18019902) return "not_found";
+  // -18019903 = "the carrier can not be detected" — 17Track couldn't auto-detect the
+  // carrier from the number. Recoverable: ask the user which carrier and re-call with
+  // the carrier hint.
+  if (rejection === -18019903) return "carrier_not_detected";
   if (rejection === -2 || rejection === -1) return "invalid_tracking_number";
   if (rejection === -3 || rejection === -4) return "not_found";
   if (typeof rejection === "number") return "invalid_tracking_number";
@@ -47,6 +52,8 @@ export function errorMessage(code: ErrorCode, trackingNumber: string): string {
       return `"${trackingNumber}" is not a recognized tracking number format.`;
     case "not_found":
       return `No tracking data found for ${trackingNumber} yet. The carrier may not have registered it.`;
+    case "carrier_not_detected":
+      return `Couldn't auto-detect the carrier for ${trackingNumber}. Ask the user which carrier shipped it, then look it up again with that carrier name.`;
     case "rate_limited":
       return "Tracking service is busy. Please try again in a moment.";
     case "upstream_unavailable":

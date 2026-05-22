@@ -3,11 +3,14 @@ import assert from "node:assert/strict";
 
 import {
   _internal,
+  defaultFetchTracking,
   handleTrackPackage,
   scrubLocation,
   type FetchTrackingResult,
 } from "../server/src/server.js";
 import { classify17TrackError } from "../server/src/errors.js";
+import { resolveCarrier } from "../server/src/carriers.js";
+import { isRetriableHttp, withRetry } from "../server/src/retry.js";
 
 const FORBIDDEN_PII_KEYS = [
   "shipper_address",
@@ -58,6 +61,11 @@ test("classify17TrackError: upstream code -18019 → rate_limited", () => {
 test("classify17TrackError: rejected entry → invalid_tracking_number", () => {
   const body = { code: 0, data: { rejected: [{ error: { code: -2 } }] } };
   assert.equal(classify17TrackError(body, 200), "invalid_tracking_number");
+});
+
+test("classify17TrackError: rejected -18019903 → carrier_not_detected", () => {
+  const body = { code: 0, data: { rejected: [{ error: { code: -18019903 } }] } };
+  assert.equal(classify17TrackError(body, 200), "carrier_not_detected");
 });
 
 // ---------------------------------------------------------------------------
@@ -273,6 +281,174 @@ test("handleTrackPackage: TimeoutError → timeout", async () => {
     assert.equal(result.structuredContent.error, "timeout");
   } finally {
     _internal.fetchTracking = prev;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Unit — resolveCarrier
+// ---------------------------------------------------------------------------
+
+test("resolveCarrier: exact alias", () => {
+  assert.equal(resolveCarrier("UPS"), 100002);
+  assert.equal(resolveCarrier("usps"), 21051);
+});
+
+test("resolveCarrier: normalizes case/whitespace/punctuation", () => {
+  assert.equal(resolveCarrier("  United Parcel Service "), 100002);
+  assert.equal(resolveCarrier("DHL Express"), 100001);
+});
+
+test("resolveCarrier: hermes/evri synonyms map to one code", () => {
+  assert.equal(resolveCarrier("Hermes"), 100331);
+  assert.equal(resolveCarrier("Evri"), 100331);
+});
+
+test("resolveCarrier: unknown / empty → null", () => {
+  assert.equal(resolveCarrier("Pony Express"), null);
+  assert.equal(resolveCarrier(""), null);
+  assert.equal(resolveCarrier(undefined), null);
+});
+
+// ---------------------------------------------------------------------------
+// Unit — withRetry
+// ---------------------------------------------------------------------------
+
+test("withRetry: retries on retriable result then succeeds", async () => {
+  let calls = 0;
+  const res = await withRetry(
+    async () => {
+      calls++;
+      return { httpStatus: calls < 3 ? 429 : 200 };
+    },
+    { maxRetries: 2, baseDelayMs: 0, isRetriable: (r) => isRetriableHttp(r.httpStatus) },
+  );
+  assert.equal(res.httpStatus, 200);
+  assert.equal(calls, 3);
+});
+
+test("withRetry: does not retry a non-retriable result", async () => {
+  let calls = 0;
+  await withRetry(
+    async () => {
+      calls++;
+      return { httpStatus: 200 };
+    },
+    { maxRetries: 2, baseDelayMs: 0, isRetriable: (r) => isRetriableHttp(r.httpStatus) },
+  );
+  assert.equal(calls, 1);
+});
+
+test("withRetry: retries thrown TimeoutError then rethrows after budget", async () => {
+  let calls = 0;
+  await assert.rejects(
+    withRetry(
+      async () => {
+        calls++;
+        const e = new Error("timed out");
+        e.name = "TimeoutError";
+        throw e;
+      },
+      {
+        maxRetries: 2,
+        baseDelayMs: 0,
+        isRetriable: () => false,
+        isRetriableError: (e) => e.name === "TimeoutError",
+      },
+    ),
+  );
+  assert.equal(calls, 3); // initial + 2 retries
+});
+
+test("isRetriableHttp: 429 and 5xx only", () => {
+  assert.equal(isRetriableHttp(429), true);
+  assert.equal(isRetriableHttp(503), true);
+  assert.equal(isRetriableHttp(200), false);
+  assert.equal(isRetriableHttp(401), false);
+});
+
+// ---------------------------------------------------------------------------
+// Handler — carrier hint threading
+// ---------------------------------------------------------------------------
+
+test("handleTrackPackage: forwards resolved carrier code to fetch", async () => {
+  const prev = _internal.fetchTracking;
+  let seenCarrier: number | null = -1;
+  _internal.fetchTracking = async (_tn, carrier) => {
+    seenCarrier = carrier;
+    return SAMPLE_OK;
+  };
+  try {
+    await handleTrackPackage({
+      tracking_number: "JD014600004033839702",
+      user_intent: "check_eta",
+      carrier: "UPS",
+    });
+    assert.equal(seenCarrier, 100002);
+  } finally {
+    _internal.fetchTracking = prev;
+  }
+});
+
+test("handleTrackPackage: unresolvable carrier → null (auto-detect)", async () => {
+  const prev = _internal.fetchTracking;
+  let seenCarrier: number | null = -1;
+  _internal.fetchTracking = async (_tn, carrier) => {
+    seenCarrier = carrier;
+    return SAMPLE_OK;
+  };
+  try {
+    await handleTrackPackage({
+      tracking_number: "JD014600004033839702",
+      user_intent: "check_eta",
+      carrier: "Pony Express",
+    });
+    assert.equal(seenCarrier, null);
+  } finally {
+    _internal.fetchTracking = prev;
+  }
+});
+
+// ---------------------------------------------------------------------------
+// defaultFetchTracking — register + re-poll for delayed first scan
+// ---------------------------------------------------------------------------
+
+test("defaultFetchTracking: re-polls once after register when first result is empty", async () => {
+  const prevPost = _internal.post;
+  const prevDelay = _internal.repollDelayMs;
+  _internal.repollDelayMs = 0; // no real wait in tests
+
+  const REG_NEEDED: FetchTrackingResult = {
+    httpStatus: 200,
+    body: {
+      code: 0,
+      data: { accepted: [], rejected: [{ number: "x", error: { code: -18019902 } }] },
+    } as any,
+  };
+  const REG_OK: FetchTrackingResult = { httpStatus: 200, body: { code: 0 } as any };
+  const EMPTY_OK: FetchTrackingResult = {
+    httpStatus: 200,
+    body: { code: 0, data: { accepted: [], rejected: [] } } as any,
+  };
+  const sequence: FetchTrackingResult[] = [REG_NEEDED, REG_OK, EMPTY_OK, SAMPLE_OK];
+  const paths: string[] = [];
+  let i = 0;
+  _internal.post = async (path) => {
+    paths.push(path);
+    return sequence[i++];
+  };
+
+  try {
+    const res = await defaultFetchTracking("JD014600004033839702", null);
+    assert.equal(res.body.data?.accepted?.length, 1);
+    assert.deepEqual(paths, [
+      "/gettrackinfo",
+      "/register",
+      "/gettrackinfo",
+      "/gettrackinfo",
+    ]);
+  } finally {
+    _internal.post = prevPost;
+    _internal.repollDelayMs = prevDelay;
   }
 });
 

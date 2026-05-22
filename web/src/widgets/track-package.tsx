@@ -72,6 +72,11 @@ const ERROR_COPY: Record<
     description: (n) => `No tracking data is available for ${n} yet. The carrier may not have registered it.`,
     color: "warning",
   },
+  carrier_not_detected: {
+    title: "Which carrier is this?",
+    description: (n) => `We couldn't auto-detect the carrier for ${n}. Tell me which carrier shipped it (e.g. UPS, DHL, USPS) and I'll look it up.`,
+    color: "warning",
+  },
   rate_limited: {
     title: "Tracking service busy",
     description: () => "The tracking service is busy right now. Please try again in a moment.",

@@ -29,7 +29,7 @@ See [`SPEC.md`](./SPEC.md) for the product spec and the data shape of every retu
 
 Shipal collects the minimum data needed to look up a parcel and aggregate anonymous usage metrics:
 
-- **Sent to 17Track:** the tracking number you provide. Required to perform the lookup.
+- **Sent to 17Track:** the tracking number you provide, plus a carrier name when you or the model name one (e.g. "my UPS package") to help 17Track route the lookup. Required to perform the lookup.
 - **Returned to the chat:** carrier, status, latest event (with city-level location only — street addresses are scrubbed before returning), days in transit, ETA, and an event timeline. No sender or recipient addresses, customer numbers, reference numbers, or other identifiers from the carrier are exposed.
 - **Sent to analytics (Yavio):** an anonymous event with the tool status (ok/error), the error code if any, the carrier name, the canonical status, the categorical `user_intent` bucket inferred by the LLM (e.g. `check_eta`, `worried_delay`), and latency. **No tracking number, no addresses, no free-text, no user identifiers.**
 
@@ -59,7 +59,7 @@ Production runs on Google Cloud Run in `europe-west1`. See [`HOSTING.md`](./HOST
 pnpm test
 ```
 
-Covers the 17Track error classifier, the location scrubber, the handler's PII regression (no `shipper_address`, `recipient_address`, `misc_info`, `customer_number`, `reference_number`, `local_number` at any depth in the response), and the error-path branches. The integration test against the real 17Track API runs only when `SEVENTEEN_TRACK_API_KEY` is set.
+Covers the 17Track error classifier (including `carrier_not_detected`), the location scrubber, the handler's PII regression (no `shipper_address`, `recipient_address`, `misc_info`, `customer_number`, `reference_number`, `local_number` at any depth in the response), the error-path branches, the carrier-name resolver, the transient-failure retry/backoff helper, and the post-register re-poll. The integration test against the real 17Track API runs only when `SEVENTEEN_TRACK_API_KEY` is set.
 
 ## Built with
 

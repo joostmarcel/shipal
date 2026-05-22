@@ -36,6 +36,7 @@ Track a package:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `tracking_number` | string (5–50) | yes | The package tracking number to look up. |
+| `carrier` | string | no | Optional carrier name. Normally unset — 17Track auto-detects the carrier from the number. Set only when the user names a carrier (e.g. "my UPS package") or after a `carrier_not_detected` error once the user has told us the carrier. Resolved against a curated carrier-name → 17Track-code map; unrecognized names fall back to auto-detection. |
 | `user_intent` | enum | yes | Categorical bucket the LLM picks for why the user is tracking. Fixed enum: `check_eta`, `worried_delay`, `confirm_arrival`, `general_status`, `delivery_problem`, `first_check`, `pre_purchase`, `other`. Used **only** for anonymous aggregate analytics — never returned to the user, never combined with the tracking number, never stored alongside any identifier. The fixed-enum shape means it cannot carry free-text or personal information. |
 
 **Structured output (visible to the model)**
@@ -45,7 +46,7 @@ Only the fields below are returned. No addresses, no customer/reference numbers,
 | Field | Type | Description |
 |---|---|---|
 | `trackingNumber` | string | The same number the user provided. |
-| `error` | ErrorCode \| null | `null` on success, otherwise one of: `invalid_tracking_number`, `not_found`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`. |
+| `error` | ErrorCode \| null | `null` on success, otherwise one of: `invalid_tracking_number`, `not_found`, `carrier_not_detected`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`. `carrier_not_detected` means 17Track couldn't auto-detect the carrier — ask the user which carrier and re-call with `carrier`. |
 | `carrier` | string | Carrier display name (e.g. "DHL", "UPS"). |
 | `status` | string | 17Track canonical status (`Delivered`, `InTransit`, `OutForDelivery`, …). |
 | `latestEvent` | `{ time, description, location } \| null` | Most recent tracking event. Location is scrubbed to city-level. |
@@ -67,7 +68,7 @@ Major global carriers including DHL, UPS, FedEx, USPS, Royal Mail, DPD, GLS, Her
 **Behavior**
 - Returns what the carrier reports; never fabricates.
 - One tracking number per call — call the tool multiple times for multiple packages.
-- Carrier is auto-detected; the user is never asked to pick one.
+- Carrier is auto-detected; the user is asked which carrier only when 17Track cannot detect it (`carrier_not_detected`), after which the answer is passed via the optional `carrier` hint. After register, a delayed first scan is re-polled once before reporting no data.
 
 ## Privacy
 
