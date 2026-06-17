@@ -1,7 +1,7 @@
 import "@/index.css";
 
 import { useState } from "react";
-import { mountWidget } from "skybridge/web";
+import { mountView } from "skybridge/web";
 import { useToolInfo } from "../helpers.js";
 import { Badge } from "@openai/apps-sdk-ui/components/Badge";
 import { Alert } from "@openai/apps-sdk-ui/components/Alert";
@@ -420,4 +420,4 @@ function TrackPackage() {
 
 export default TrackPackage;
 
-mountWidget(<TrackPackage />);
+mountView(<TrackPackage />);

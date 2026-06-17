@@ -5,7 +5,7 @@ import {
   type ErrorCode,
   type UpstreamResponse,
 } from "./errors.js";
-import { track, type UserIntent } from "./analytics.js";
+import { track, instrumentServer, type UserIntent } from "./analytics.js";
 
 const SEVENTEEN_TRACK_API_KEY = process.env.SEVENTEEN_TRACK_API_KEY ?? "";
 const USER_AGENT = "shipal/0.1.0";
@@ -264,27 +264,18 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
   };
 }
 
-export const server = new McpServer(
-  {
-    name: "shipal",
-    version: "0.1.0",
-    icons: [{ src: "/assets/icon.svg", mimeType: "image/svg+xml" }],
-  },
-  { capabilities: {} },
-).registerWidget(
-  "track-package",
-  {
-    description: "Look up the current status and event history of a parcel by tracking number.",
-    _meta: {
-      ui: {
-        csp: {
-          connectDomains: [],
-          resourceDomains: ["https://cdn.openai.com"],
-        },
-      },
+export const server = instrumentServer(
+  new McpServer(
+    {
+      name: "shipal",
+      version: "0.1.0",
+      icons: [{ src: "/assets/icon.svg", mimeType: "image/svg+xml" }],
     },
-  },
+    { capabilities: {} },
+  ),
+).registerTool(
   {
+    name: "track-package",
     description:
       "Look up the current status of a parcel by its tracking number via the 17Track service. The tool returns: the carrier name (auto-detected from the number — never ask the user), the canonical shipment status (Delivered, InTransit, OutForDelivery, etc.), the most recent tracking event (description, scrubbed-to-city location, timestamp), days in transit, and the carrier's estimated delivery window when one is available. The widget additionally renders a chronological event history. On error the response carries a typed `error` code (`invalid_tracking_number`, `not_found`, `rate_limited`, `upstream_unavailable`, `api_key_invalid`, `timeout`, `unknown`) and the widget displays a targeted alert. Take one tracking number per call. Do not invent or assume tracking data beyond what the response contains. Do not narrate or summarize the rendered widget; speak again only if the user asks a follow-up (e.g. 'is it delivered?', 'when will it arrive?').",
     inputSchema: {
@@ -316,8 +307,27 @@ export const server = new McpServer(
       openWorldHint: true,
       destructiveHint: false,
     },
+    view: {
+      component: "track-package",
+      description:
+        "Look up the current status and event history of a parcel by tracking number.",
+      csp: {
+        connectDomains: [],
+        resourceDomains: ["https://cdn.openai.com"],
+      },
+    },
   },
-  async (input) => handleTrackPackage(input as HandlerInput),
+  // Return the result object inline (rather than delegating the whole Promise)
+  // so Skybridge infers the tool's output type from `structuredContent` — a
+  // bare `Promise<HandlerResult>` return makes it infer `never`.
+  async (input) => {
+    const result = await handleTrackPackage(input as HandlerInput);
+    return {
+      structuredContent: result.structuredContent,
+      content: result.content,
+      _meta: result._meta,
+    };
+  },
 );
 
 export type AppType = typeof server;

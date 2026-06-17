@@ -18,7 +18,7 @@ ChatGPT / Claude
 shipal-mcp (Cloud Run, europe-west1)
    │
    ├─► 17Track API   ─── tracking lookup (server.ts → defaultFetchTracking)
-   └─► yavio-analytics ── anonymous tool-call telemetry (analytics.ts → @yavio/analytics-sdk-server)
+   └─► yavio-analytics ── anonymous tool-call telemetry (analytics.ts → @yavio/sdk)
 ```
 
 The repo is a single Skybridge project: `server/` is the MCP server, `web/src/widgets/` is the React widget, `website/` is the marketing/landing page (also served by the MCP host at `/`).
@@ -65,5 +65,5 @@ Covers the 17Track error classifier, the location scrubber, the handler's PII re
 
 - [Skybridge](https://docs.skybridge.tech/home) — MCP framework
 - [Apps SDK UI](https://developers.openai.com/apps-sdk) — widget primitives
-- [@yavio/analytics-sdk-server](https://github.com/teamyavio/yavio) — anonymous event telemetry
+- [@yavio/sdk](https://github.com/teamyavio/yavio) — anonymous event telemetry
 - [17Track API v2.2](https://api.17track.net/photos/docs/api/track.html) — carrier data

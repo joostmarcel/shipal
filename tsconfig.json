@@ -2,9 +2,12 @@
   "extends": "skybridge/tsconfig",
 
   "compilerOptions": {
-    "outDir": "dist"
+    "outDir": "dist",
+    // Sources live in server/src and web/src (not a single ./src), so override
+    // the Skybridge base's rootDir of "${configDir}/src" to the project root.
+    "rootDir": "."
   },
 
-  "include": ["server/src", "web/src"],
+  "include": ["server.ts", "server/src", "web/src", ".skybridge/views.d.ts"],
   "exclude": ["tests", "dist", "node_modules"]
 }

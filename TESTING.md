@@ -61,7 +61,7 @@ These are the canonical inputs. Run each one on **every surface listed in the ma
 | 1 | `@Shipal track 995020567586` | Widget renders with carrier=DHL Paket, an active progress bar, the latest event with a city-level location (street stripped), and an event timeline. `daysInTransit` and ETA appear when 17Track returns them. |
 | 2 | `@Shipal track abc` | The MCP host (ChatGPT / Claude) rejects the call against the input schema (`tracking_number` requires ≥5 chars). The handler is never invoked. |
 | 3 | `@Shipal track XX999AA00000000000` | `XX999AA00000000000` passes the length check but 17Track classifies it as a rejected entry. The widget renders the `invalid_tracking_number` alert: title **"Not a tracking number"**, body `"XX999AA00000000000" is not a recognized tracking number format.` |
-| 4 | `"where's 995020567586, it should've arrived yesterday"` | Same widget render as #1. Dev-server log shows `[analytics] SHIPAL_ANALYTICS_KEY not set` (or, once Yavio is wired, the SDK identity log). The LLM has classified `user_intent: "worried_delay"` — confirm by checking the dev-server transcript or the analytics dashboard once production is wired up. |
+| 4 | `"where's 995020567586, it should've arrived yesterday"` | Same widget render as #1. Dev-server log shows `[analytics] YAVIO_API_KEY not set — analytics disabled` (or, once `YAVIO_API_KEY` is set, events are batched to Yavio). The LLM has classified `user_intent: "worried_delay"` — confirm by checking the dev-server transcript or the analytics dashboard once production is wired up. |
 
 If you're testing the production deployment instead of local, swap `<ngrok-url>` for `https://shipal-18736126069.europe-west1.run.app/mcp` and skip the ngrok step.
 

@@ -24,7 +24,7 @@ The single Cloud Run service serves both:
 | Variable | Source | Description |
 |---|---|---|
 | `SEVENTEEN_TRACK_API_KEY` | Secret Manager (`shipal-17track-key:latest`) | 17Track API key for package tracking. The server refuses to boot without this. |
-| `YAVIO_INGEST_URL` | Optional inline env var | Analytics ingest URL. Defaults to `https://ingest.yavio.ai` inside `@yavio/analytics-sdk-server`. Override only for staging tenants. |
+| `YAVIO_ENDPOINT` | Inline env var (**set this**) | Analytics ingest URL — `https://ingest.apps.yavio.ai/v1/events`. Must be set: `@yavio/sdk`'s built-in default (`https://ingest.yavio.ai`) does not resolve. Verified 2026-06-17 returning `200 {"accepted":N,"rejected":0}`. |
 | `YAVIO_API_KEY` | Optional secret (`shipal-yavio-api-key:latest`) | Yavio tenant API key (scope `write:events`). Provisioned by running `pnpm -C tools/cli dev tenant create "Shipal"` in the yavio-analytics repo. When unset, `track()` is a silent no-op and a one-time warning is logged. |
 
 ### Yavio tenant identity (recorded for the runbook)
@@ -164,7 +164,7 @@ Then add the DNS CNAME record pointing to `ghs.googlehosted.com` at the `yavio.d
 
 ## Analytics — Yavio Analytics tenant
 
-Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/analytics-sdk-server`. The Shipal-side runbook is just "make sure `YAVIO_API_KEY` is bound to the Cloud Run service"; provisioning, dashboards, retention, and per-tenant views all live on the Yavio side.
+Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/sdk` (the server is wrapped with `withYavio` in `server/src/analytics.ts`, in `serverOnly` mode with input/output/geo auto-capture disabled for privacy). The Shipal-side runbook is just "make sure `YAVIO_API_KEY` is bound to the Cloud Run service"; provisioning, dashboards, retention, and per-tenant views all live on the Yavio side.
 
 To provision (one-time, in the yavio-analytics repo):
 
@@ -181,5 +181,5 @@ Per-app dashboard URL is `<yavio-dashboard>/t/<tenantId>/apps/<appId>` once even
 - **Reserved path**: Cloud Run's Google Front-End returns its own 404 for `/healthz` before requests reach the container. Use `/health` instead (or anything else).
 - **Platform**: build `--platform linux/amd64` — Mac is arm64 by default and Cloud Run rejects arm64 images.
 - **Python**: gcloud needs Python ≥ 3.10. System Python 3.9 crashes on some commands (e.g. `gcloud run deploy`).
-- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `track()` is a logged no-op. The Yavio SDK swallows network errors via `onError` (default `console.error`).
-- **Concurrency=1, not 80**: Skybridge `0.33.2`'s `mcpMiddleware` shares a single `McpServer` across requests but calls `server.connect(transport)` per request. Two overlapping requests cause the second to throw `Error: Already connected to a transport`, which Cloud Run propagates as a 500 → Cloudflare returns 502 to Claude. Serializing requests per instance via `--concurrency=1` avoids the race; horizontal scaling via `--max-instances` still applies. Revisit when Skybridge ships per-request server isolation or we patch the middleware to mutex around `connect`/`close`.
+- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `@yavio/sdk` runs in no-op mode and `track()` does nothing. `@yavio/sdk` batches events on a ~10s interval and swallows network errors internally. One caveat: on `SIGTERM`, Skybridge's `server.run()` closes the HTTP server and `process.exit(0)`s as soon as connections drain, which can pre-empt the SDK's async final-batch flush — so the last sub-interval batch is best-effort on shutdown (see the comment in `server/src/index.ts`).
+- **Concurrency**: Skybridge `1.x` creates a fresh stateless `StreamableHTTPServerTransport` per request (`connectStatelessTransport`), so the old `0.33.2` "`Error: Already connected to a transport`" race no longer applies and `--concurrency=1` is no longer required for correctness. Validate under load before raising `--concurrency`, since each instance still shares one `McpServer`.

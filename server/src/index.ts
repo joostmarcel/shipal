@@ -2,19 +2,17 @@ import "dotenv/config";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { server } from "./server.js";
-import { attachAnalytics, flushAnalytics } from "./analytics.js";
 
 if (!process.env.SEVENTEEN_TRACK_API_KEY) {
   throw new Error("SEVENTEEN_TRACK_API_KEY is required");
 }
 
-attachAnalytics();
-
-for (const sig of ["SIGTERM", "SIGINT"] as const) {
-  process.on(sig, () => {
-    flushAnalytics().finally(() => process.exit(0));
-  });
-}
+// Signal handling is owned by Skybridge's `server.run()`, which installs
+// SIGTERM/SIGINT handlers that close the HTTP server and `process.exit(0)`.
+// `@yavio/sdk` also installs a SIGTERM/SIGINT handler that drains buffered
+// analytics over the network, but Skybridge's exit fires as soon as
+// connections drain, so the final (sub-interval) batch is best-effort on
+// abrupt shutdown. Steady-state events flush on the SDK's ~10s interval.
 
 const OPENAI_APPS_CHALLENGE = "5JTGZ1w0jaEJjs1MaI5gEFX2h_1_f9u4_bAUW-FYLkk";
 
