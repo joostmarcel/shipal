@@ -1,5 +1,7 @@
 node_modules/
 dist/
+.skybridge/
+.vercel/
 .env*
 !.env.example
 .DS_store

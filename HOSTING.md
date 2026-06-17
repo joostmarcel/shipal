@@ -24,7 +24,7 @@ The single Cloud Run service serves both:
 | Variable | Source | Description |
 |---|---|---|
 | `SEVENTEEN_TRACK_API_KEY` | Secret Manager (`shipal-17track-key:latest`) | 17Track API key for package tracking. The server refuses to boot without this. |
-| `YAVIO_INGEST_URL` | Optional inline env var | Analytics ingest URL. Defaults to `https://ingest.yavio.ai` inside `@yavio/analytics-sdk-server`. Override only for staging tenants. |
+| `YAVIO_ENDPOINT` | Inline env var (**set this**) | Analytics ingest URL — `https://ingest.apps.yavio.ai/v1/events`. Must be set: `@yavio/sdk`'s built-in default (`https://ingest.yavio.ai`) does not resolve. Verified 2026-06-17 returning `200 {"accepted":N,"rejected":0}`. |
 | `YAVIO_API_KEY` | Optional secret (`shipal-yavio-api-key:latest`) | Yavio tenant API key (scope `write:events`). Provisioned by running `pnpm -C tools/cli dev tenant create "Shipal"` in the yavio-analytics repo. When unset, `track()` is a silent no-op and a one-time warning is logged. |
 
 ### Yavio tenant identity (recorded for the runbook)
@@ -38,9 +38,9 @@ The single Cloud Run service serves both:
 | Secret Manager binding | `shipal-yavio-api-key:latest` |
 | Provisioned via | `pnpm -C tools/cli dev tenant create "Shipal"` against the `yavio-control-plane` Cloud SQL instance through Cloud SQL Auth Proxy on 2026-04-29 |
 
-The SDK logs `[yavio] sending as tenant=c3accd03-… app=3c2eec80-… scopes=[write:events,admin:tenant] sdk=0.1.0` once on the first event flush; check that the values match the table above. A mismatch means the wrong key is wired.
+`@yavio/sdk` logs `[yavio] Server-only mode: skipping _meta.yavio injection…` once at startup. If the key is wrong/rejected it logs `[YAVIO-1203] API key rejected — stopping delivery` on the first flush (and `[YAVIO-1200] Network error…` on an unreachable endpoint). No such error after a tool call means events are being accepted and delivered.
 
-The dashboard URL for this tenant once events arrive: `https://yavio-dashboard-bj7jlafuba-ew.a.run.app/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
+The dashboard URL for this tenant once events arrive: `https://dashboard.apps.yavio.ai/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
 
 ## Prerequisites on your machine
 
@@ -95,6 +95,7 @@ gcloud run deploy shipal \
   --max-instances 5 \
   --timeout 30s \
   --concurrency 1 \
+  --update-env-vars "YAVIO_ENDPOINT=https://ingest.apps.yavio.ai/v1/events" \
   --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest,YAVIO_API_KEY=shipal-yavio-api-key:latest"
 ```
 
@@ -164,12 +165,12 @@ Then add the DNS CNAME record pointing to `ghs.googlehosted.com` at the `yavio.d
 
 ## Analytics — Yavio Analytics tenant
 
-Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/analytics-sdk-server`. The Shipal-side runbook is just "make sure `YAVIO_API_KEY` is bound to the Cloud Run service"; provisioning, dashboards, retention, and per-tenant views all live on the Yavio side.
+Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/sdk` (the server is wrapped with `withYavio` in `server/src/analytics.ts`, in `serverOnly` mode with input/output/geo auto-capture disabled for privacy). The Shipal-side runbook is just "make sure `YAVIO_API_KEY` is bound to the Cloud Run service"; provisioning, dashboards, retention, and per-tenant views all live on the Yavio side.
 
 To provision (one-time, in the yavio-analytics repo):
 
 ```bash
-ROOT_API_KEY=<root-key> INGEST_URL=https://ingest.yavio.ai \
+ROOT_API_KEY=<root-key> INGEST_URL=https://ingest.apps.yavio.ai \
   pnpm -C tools/cli dev tenant create "Shipal"
 # capture the returned apiKey, store as Secret Manager: shipal-yavio-api-key
 ```
@@ -181,5 +182,5 @@ Per-app dashboard URL is `<yavio-dashboard>/t/<tenantId>/apps/<appId>` once even
 - **Reserved path**: Cloud Run's Google Front-End returns its own 404 for `/healthz` before requests reach the container. Use `/health` instead (or anything else).
 - **Platform**: build `--platform linux/amd64` — Mac is arm64 by default and Cloud Run rejects arm64 images.
 - **Python**: gcloud needs Python ≥ 3.10. System Python 3.9 crashes on some commands (e.g. `gcloud run deploy`).
-- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `track()` is a logged no-op. The Yavio SDK swallows network errors via `onError` (default `console.error`).
-- **Concurrency=1, not 80**: Skybridge `0.33.2`'s `mcpMiddleware` shares a single `McpServer` across requests but calls `server.connect(transport)` per request. Two overlapping requests cause the second to throw `Error: Already connected to a transport`, which Cloud Run propagates as a 500 → Cloudflare returns 502 to Claude. Serializing requests per instance via `--concurrency=1` avoids the race; horizontal scaling via `--max-instances` still applies. Revisit when Skybridge ships per-request server isolation or we patch the middleware to mutex around `connect`/`close`.
+- **Analytics**: best-effort. The server never fails a tool call if analytics is down; if `YAVIO_API_KEY` is unset, `@yavio/sdk` runs in no-op mode and `track()` does nothing. `@yavio/sdk` batches events on a ~10s interval and swallows network errors internally. One caveat: on `SIGTERM`, Skybridge's `server.run()` closes the HTTP server and `process.exit(0)`s as soon as connections drain, which can pre-empt the SDK's async final-batch flush — so the last sub-interval batch is best-effort on shutdown (see the comment in `server/src/index.ts`).
+- **Concurrency**: Skybridge `1.x` creates a fresh stateless `StreamableHTTPServerTransport` per request (`connectStatelessTransport`), so the old `0.33.2` "`Error: Already connected to a transport`" race no longer applies and `--concurrency=1` is no longer required for correctness. Validate under load before raising `--concurrency`, since each instance still shares one `McpServer`.
