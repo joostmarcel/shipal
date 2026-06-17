@@ -19,7 +19,7 @@ Track packages through conversation. Target: anyone expecting a delivery who wan
 - **Upstream API**: 17Track Track API v2.2 — `POST https://api.17track.net/track/v2.2/gettrackinfo` (with auto `/register` retry when the number isn't yet registered for tracking)
 - **Auth**: API key via `17token` request header (env var `SEVENTEEN_TRACK_API_KEY`)
 - **Constraints**: one tracking number per call, 10-second request timeout, carrier auto-detected by 17Track.
-- **Analytics**: anonymous tool-call events via `@yavio/sdk` (`withYavio`), batched to `YAVIO_ENDPOINT` (default `https://ingest.yavio.ai`). Payload contains only aggregate signals (status, carrier name, user_intent category, latency). Tracking numbers and addresses are never transmitted to analytics — value/geo auto-capture is disabled and the SDK runs in `serverOnly` mode.
+- **Analytics**: anonymous tool-call events via `@yavio/sdk` (`withYavio`), batched to `YAVIO_ENDPOINT` (`https://ingest.apps.yavio.ai/v1/events`; the SDK's built-in default does not resolve, so it is set explicitly). Payload contains only aggregate signals (status, carrier name, user_intent category, latency). Tracking numbers and addresses are never transmitted to analytics — value/geo auto-capture is disabled and the SDK runs in `serverOnly` mode.
 
 ## UX Flow
 

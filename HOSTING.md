@@ -38,9 +38,9 @@ The single Cloud Run service serves both:
 | Secret Manager binding | `shipal-yavio-api-key:latest` |
 | Provisioned via | `pnpm -C tools/cli dev tenant create "Shipal"` against the `yavio-control-plane` Cloud SQL instance through Cloud SQL Auth Proxy on 2026-04-29 |
 
-The SDK logs `[yavio] sending as tenant=c3accd03-… app=3c2eec80-… scopes=[write:events,admin:tenant] sdk=0.1.0` once on the first event flush; check that the values match the table above. A mismatch means the wrong key is wired.
+`@yavio/sdk` logs `[yavio] Server-only mode: skipping _meta.yavio injection…` once at startup. If the key is wrong/rejected it logs `[YAVIO-1203] API key rejected — stopping delivery` on the first flush (and `[YAVIO-1200] Network error…` on an unreachable endpoint). No such error after a tool call means events are being accepted and delivered.
 
-The dashboard URL for this tenant once events arrive: `https://yavio-dashboard-bj7jlafuba-ew.a.run.app/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
+The dashboard URL for this tenant once events arrive: `https://dashboard.apps.yavio.ai/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
 
 ## Prerequisites on your machine
 
@@ -95,6 +95,7 @@ gcloud run deploy shipal \
   --max-instances 5 \
   --timeout 30s \
   --concurrency 1 \
+  --update-env-vars "YAVIO_ENDPOINT=https://ingest.apps.yavio.ai/v1/events" \
   --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest,YAVIO_API_KEY=shipal-yavio-api-key:latest"
 ```
 
@@ -169,7 +170,7 @@ Shipal ships anonymous tool-call events to Yavio Analytics via `@yavio/sdk` (the
 To provision (one-time, in the yavio-analytics repo):
 
 ```bash
-ROOT_API_KEY=<root-key> INGEST_URL=https://ingest.yavio.ai \
+ROOT_API_KEY=<root-key> INGEST_URL=https://ingest.apps.yavio.ai \
   pnpm -C tools/cli dev tenant create "Shipal"
 # capture the returned apiKey, store as Secret Manager: shipal-yavio-api-key
 ```
