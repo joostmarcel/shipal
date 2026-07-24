@@ -25,22 +25,17 @@ The single Cloud Run service serves both:
 |---|---|---|
 | `SEVENTEEN_TRACK_API_KEY` | Secret Manager (`shipal-17track-key:latest`) | 17Track API key for package tracking. The server refuses to boot without this. |
 | `YAVIO_ENDPOINT` | Inline env var (**set this**) | Analytics ingest URL — `https://ingest.apps.yavio.ai/v1/events`. Must be set: `@yavio/sdk`'s built-in default (`https://ingest.yavio.ai`) does not resolve. Verified 2026-06-17 returning `200 {"accepted":N,"rejected":0}`. |
-| `YAVIO_API_KEY` | Optional secret (`shipal-yavio-api-key:latest`) | Yavio tenant API key (scope `write:events`). Provisioned by running `pnpm -C tools/cli dev tenant create "Shipal"` in the yavio-analytics repo. When unset, `track()` is a silent no-op and a one-time warning is logged. |
+| `YAVIO_API_KEY` | Optional secret (`shipal-yavio-api-key:latest`) | Yavio project API key ("Marcels Workspace / Shipal Prod" in the Yavio dashboard, key prefix `yav_ac985489`). When unset, analytics is a silent no-op and a one-time warning is logged. |
+| `YAVIO_INTENT` | Inline env var, `true` since 2026-07-24 | Enables `@yavio/sdk` user-intent capture: the `track-package` tool advertises a required `context` parameter (visible in `tools/list`), captured to the dashboard's Intents page. Schema change ⇒ ChatGPT app-store resubmission required (pending). |
 
-### Yavio tenant identity (recorded for the runbook)
-
-| Field | Value |
-|---|---|
-| Tenant name | Shipal |
-| Tenant ID | `c3accd03-1892-4136-aebc-440bdb07ab10` |
-| App ID | `3c2eec80-f165-4dda-80b7-ebec9000263e` |
-| BigQuery dataset | `t_q8ulk9aorfovwj1b_events` (auto-created with 90-day partition expiration) |
-| Secret Manager binding | `shipal-yavio-api-key:latest` |
-| Provisioned via | `pnpm -C tools/cli dev tenant create "Shipal"` against the `yavio-control-plane` Cloud SQL instance through Cloud SQL Auth Proxy on 2026-04-29 |
+> **Note (2026-07-24):** an earlier version of this file documented a "Yavio
+> tenant identity" (tenant/app IDs, a BigQuery dataset, `tools/cli` tenant
+> provisioning). That referred to the abandoned Cloud Run + BigQuery analytics
+> variant, decommissioned 2026-07-22. Shipal reports to the self-hosted Yavio
+> platform at `dashboard.apps.yavio.ai` (project **Shipal Prod** in Marcels
+> Workspace).
 
 `@yavio/sdk` logs `[yavio] Server-only mode: skipping _meta.yavio injection…` once at startup. If the key is wrong/rejected it logs `[YAVIO-1203] API key rejected — stopping delivery` on the first flush (and `[YAVIO-1200] Network error…` on an unreachable endpoint). No such error after a tool call means events are being accepted and delivered.
-
-The dashboard URL for this tenant once events arrive: `https://dashboard.apps.yavio.ai/t/c3accd03-1892-4136-aebc-440bdb07ab10/apps/3c2eec80-f165-4dda-80b7-ebec9000263e`.
 
 ## Prerequisites on your machine
 
