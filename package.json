@@ -17,7 +17,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@openai/apps-sdk-ui": "^0.2.1",
     "@tailwindcss/vite": "^4.2.1",
-    "@yavio/sdk": "^0.2.1",
+    "@yavio/sdk": "^0.2.2",
     "dotenv": "^17.3.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
