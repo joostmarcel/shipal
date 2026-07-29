@@ -301,6 +301,39 @@ export const server = instrumentServer(
           "Categorical bucket (fixed enum, not free text) describing why the user is tracking this package, inferred from the conversation. Used only for anonymous aggregate analytics — never returned to the user, never combined with the tracking number, and never stored alongside any identifier. Pick the single best match: check_eta (wants arrival date), worried_delay (package seems late), confirm_arrival (verifying delivery happened), general_status (no specific concern), delivery_problem (reporting an issue), first_check (first time looking), pre_purchase (evaluating a seller), other.",
         ),
     },
+    // Mirrors the handler's StructuredOutput type exactly (both the success
+    // shape and the error representation share it: on error the string fields
+    // are empty and the nullable fields null, with `error` carrying the code).
+    outputSchema: {
+      trackingNumber: z.string().describe("The tracking number that was looked up."),
+      error: z
+        .enum([
+          "invalid_tracking_number",
+          "not_found",
+          "rate_limited",
+          "upstream_unavailable",
+          "api_key_invalid",
+          "timeout",
+          "unknown",
+        ])
+        .nullable()
+        .describe("Typed error code, or null on success."),
+      carrier: z.string().describe("Auto-detected carrier name; empty string on error."),
+      status: z.string().describe("Canonical shipment status; empty string on error."),
+      latestEvent: z
+        .object({
+          time: z.string(),
+          description: z.string(),
+          location: z.string().describe("Scrubbed to city level — never a street address."),
+        })
+        .nullable()
+        .describe("Most recent tracking event, or null."),
+      daysInTransit: z.number().nullable(),
+      estimatedDelivery: z
+        .object({ from: z.string(), to: z.string() })
+        .nullable()
+        .describe("Carrier's estimated delivery window when available."),
+    },
     annotations: {
       title: "Track a package",
       readOnlyHint: true,
@@ -312,8 +345,10 @@ export const server = instrumentServer(
       description:
         "Look up the current status and event history of a parcel by tracking number.",
       csp: {
+        // cdn.openai.com removed 2026-07-29: no runtime asset references it
+        // (verified via source grep); do not broaden this list.
         connectDomains: [],
-        resourceDomains: ["https://cdn.openai.com"],
+        resourceDomains: [],
       },
     },
   },
