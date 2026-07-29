@@ -56,6 +56,31 @@ server.use(((req: any, _res: any, next: any) => {
   next();
 }) as any);
 
+// ChatGPT caches an app's widget-template URI from the manifest it saw when the
+// app was installed/submitted — it re-reads `tools/list` very rarely. Skybridge
+// <1.0 published views as `ui://widgets/<host>/<name>.html`; 1.x renamed the
+// namespace to `ui://views/<host>/<name>.html` (and appended a `?v=` cache
+// key). Clients that installed Shipal before the 1.x upgrade still ask for the
+// old URI, get `-32602 … not found`, and render "Failed to fetch template"
+// after an otherwise successful tool call.
+//
+// Map the legacy namespace onto the current one. We only need to correct the
+// path: Skybridge resolves a view by its query-less path, so the missing `?v=`
+// param is fine. Runs at the Express layer because Skybridge's own resolver
+// sits ahead of any `mcpMiddleware()` we could register.
+const LEGACY_VIEW_URI = /^ui:\/\/widgets\/(apps-sdk|ext-apps)\/(.+)$/;
+
+server.use(((req: any, _res: any, next: any) => {
+  for (const msg of Array.isArray(req.body) ? req.body : [req.body]) {
+    if (msg?.method !== "resources/read") continue;
+    const uri = msg.params?.uri;
+    if (typeof uri !== "string") continue;
+    const match = LEGACY_VIEW_URI.exec(uri);
+    if (match) msg.params.uri = `ui://views/${match[1]}/${match[2]}`;
+  }
+  next();
+}) as any);
+
 server
   .use("/assets/icon.svg", ((_req: any, res: any) => {
     res.setHeader("Content-Type", "image/svg+xml");
