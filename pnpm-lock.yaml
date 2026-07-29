@@ -18,8 +18,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1(vite@7.3.1(@types/node@25.3.0)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
       '@yavio/sdk':
-        specifier: ^0.2.2
-        version: 0.2.2(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^0.3.0
+        version: 0.3.0(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       dotenv:
         specifier: ^17.3.1
         version: 17.3.1
@@ -1449,8 +1449,8 @@ packages:
     peerDependencies:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
 
-  '@yavio/sdk@0.2.2':
-    resolution: {integrity: sha512-QJRGel/7KGLqgD7w5b1+SmvoMU9mZ3aJuI0jLfyWhmE75qbDD3Y9T9SwlxabUuYUTLodUrZEOfHpzfloRK7ohQ==}
+  '@yavio/sdk@0.3.0':
+    resolution: {integrity: sha512-F6iQQSsl0chB0U3vh5qF112CGOCqpbL8/3frzO/u/yhZdw4wDObgeFnlzP9p0+L4vxHvsWBXpZJG46bzD9vbEg==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': '>=1.12.0'
@@ -4579,7 +4579,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@yavio/sdk@0.2.2(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@yavio/sdk@0.3.0(@modelcontextprotocol/sdk@1.29.0(zod@4.3.6))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.3.6)
       nanoid: 5.1.11
