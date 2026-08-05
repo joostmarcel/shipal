@@ -8,6 +8,7 @@ import {
   type FetchTrackingResult,
 } from "../server/src/server.js";
 import { classify17TrackError } from "../server/src/errors.js";
+import { TRACK_PAYLOAD_KEYS, buildTrackPayload } from "../server/src/analytics.js";
 
 const FORBIDDEN_PII_KEYS = [
   "shipper_address",
@@ -274,6 +275,63 @@ test("handleTrackPackage: TimeoutError → timeout", async () => {
   } finally {
     _internal.fetchTracking = prev;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Unit — analytics payload (the privacy contract)
+// ---------------------------------------------------------------------------
+
+const baseEvent = {
+  tool_status: "ok",
+  user_intent: "check_eta",
+  latency_ms: 120,
+} as const;
+
+test("buildTrackPayload: emits exactly the reviewed field set", () => {
+  // Auto-capture is off, so this payload is the ONLY thing that reaches
+  // analytics. Adding a key here must be a deliberate privacy decision —
+  // this assertion is what makes it deliberate.
+  const payload = buildTrackPayload({ ...baseEvent });
+  assert.deepEqual(Object.keys(payload).sort(), [...TRACK_PAYLOAD_KEYS].sort());
+});
+
+test("buildTrackPayload: carries the anonymous shipment metrics", () => {
+  const payload = buildTrackPayload({
+    ...baseEvent,
+    carrier: "DHL",
+    status: "InTransit",
+    days_in_transit: 3,
+    has_eta: true,
+    checkpoint_count: 7,
+  });
+  assert.equal(payload.days_in_transit, 3);
+  assert.equal(payload.has_eta, true);
+  assert.equal(payload.checkpoint_count, 7);
+});
+
+test("buildTrackPayload: error path reports absence rather than omitting keys", () => {
+  const payload = buildTrackPayload({
+    ...baseEvent,
+    tool_status: "error",
+    error_code: "not_found",
+  });
+  assert.equal(payload.days_in_transit, null);
+  assert.equal(payload.has_eta, false);
+  assert.equal(payload.checkpoint_count, 0);
+  assert.equal(payload.carrier, null);
+});
+
+test("buildTrackPayload: no forbidden PII key survives into the payload", () => {
+  const payload = buildTrackPayload({
+    ...baseEvent,
+    carrier: "DHL",
+    status: "Delivered",
+    days_in_transit: 2,
+    has_eta: true,
+    checkpoint_count: 4,
+  });
+  const hit = findForbiddenKey(payload);
+  assert.equal(hit, null, hit ?? undefined);
 });
 
 // ---------------------------------------------------------------------------

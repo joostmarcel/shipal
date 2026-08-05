@@ -19,6 +19,12 @@ export type AnalyticsEvent = {
   status?: string;
   user_intent: UserIntent;
   latency_ms: number;
+  /** Carrier-reported transit duration. A duration, never a date or a place. */
+  days_in_transit?: number | null;
+  /** Whether the carrier supplied a delivery estimate — not the estimate itself. */
+  has_eta?: boolean;
+  /** How many scan events the carrier published. A count, never their contents. */
+  checkpoint_count?: number;
 };
 
 /**
@@ -95,12 +101,32 @@ export function instrumentServer<T extends McpServer>(base: T): T {
 }
 
 /**
- * Emit the curated, privacy-reviewed tool-call event. Runs inside the Yavio
- * trace context established by {@link instrumentServer} (the tool handler is
- * wrapped); outside that context it is a silent no-op.
+ * The exact set of fields that may leave this server for analytics.
+ *
+ * Every field is either a category (carrier, status, intent), a count, or a
+ * duration. None identifies a parcel, a person or a place — deliberately, so
+ * that auto-capture staying off (see {@link instrumentServer}) is not the only
+ * thing standing between the tracking number and analytics.
+ *
+ * The key set is asserted in tests. Adding a field here is a privacy decision:
+ * make it consciously, and keep it derivable rather than raw.
  */
-export function track(event: AnalyticsEvent): void {
-  yavio.track("tool_call", {
+export const TRACK_PAYLOAD_KEYS = [
+  "tool_name",
+  "tool_status",
+  "error_code",
+  "carrier",
+  "status",
+  "user_intent",
+  "latency_ms",
+  "days_in_transit",
+  "has_eta",
+  "checkpoint_count",
+] as const;
+
+/** Build the curated payload. Exported so tests can assert it without a transport. */
+export function buildTrackPayload(event: AnalyticsEvent): Record<string, unknown> {
+  return {
     tool_name: "track-package",
     tool_status: event.tool_status,
     error_code: event.error_code ?? null,
@@ -108,5 +134,17 @@ export function track(event: AnalyticsEvent): void {
     status: event.status ?? null,
     user_intent: event.user_intent,
     latency_ms: event.latency_ms,
-  });
+    days_in_transit: event.days_in_transit ?? null,
+    has_eta: event.has_eta ?? false,
+    checkpoint_count: event.checkpoint_count ?? 0,
+  };
+}
+
+/**
+ * Emit the curated, privacy-reviewed tool-call event. Runs inside the Yavio
+ * trace context established by {@link instrumentServer} (the tool handler is
+ * wrapped); outside that context it is a silent no-op.
+ */
+export function track(event: AnalyticsEvent): void {
+  yavio.track("tool_call", buildTrackPayload(event));
 }

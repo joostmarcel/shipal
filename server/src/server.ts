@@ -154,7 +154,11 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
   const { tracking_number: trackingNumber, user_intent: userIntent } = input;
   const startedAt = Date.now();
 
-  const emit = (status: "ok" | "error", result: StructuredOutput) => {
+  const emit = (
+    status: "ok" | "error",
+    result: StructuredOutput,
+    checkpointCount = 0,
+  ) => {
     track({
       tool_status: status,
       error_code: result.error,
@@ -162,6 +166,9 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
       status: result.status || undefined,
       user_intent: userIntent,
       latency_ms: Date.now() - startedAt,
+      days_in_transit: result.daysInTransit,
+      has_eta: result.estimatedDelivery !== null,
+      checkpoint_count: checkpointCount,
     });
   };
 
@@ -255,7 +262,7 @@ export async function handleTrackPackage(input: HandlerInput): Promise<HandlerRe
       eta && (eta.from || eta.to) ? { from: eta.from, to: eta.to } : null,
   };
 
-  emit("ok", structuredContent);
+  emit("ok", structuredContent, allEvents.length);
 
   return {
     structuredContent,
