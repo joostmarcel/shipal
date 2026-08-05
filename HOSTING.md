@@ -3,12 +3,26 @@
 ## Project
 
 - **GCP Organization:** `yavio.ai` (id `284665811761`)
-- **GCP Project:** `projekt-twenty-crm` (display name `joostmarcel`, project number `18736126069`)
+- **GCP Project:** `projekt-twenty-crm` (display name `shipal-hosting`, project number `18736126069`)
 - **Region:** `europe-west1`
 - **Cloud Run service:** `shipal`
 - **Service URL:** https://shipal-18736126069.europe-west1.run.app
+- **Custom domain:** https://shipal.apps.yavio.ai (Cloud Run domain mapping; DNS is an unproxied CNAME → `ghs.googlehosted.com` in Cloudflare)
 - **Artifact Registry:** `europe-west1-docker.pkg.dev/projekt-twenty-crm/shipal/shipal`
 - **Secret Manager:** `shipal-17track-key` (automatic replication); optionally `shipal-yavio-api-key` (Yavio analytics tenant API key, scope `write:events`)
+
+> **⚠️ ONE deployment, in `projekt-twenty-crm` (display name `shipal-hosting`,
+> number `18736126069`) — and that project must NEVER be deleted.** It serves both URLs:
+>
+> 1. `https://shipal-18736126069.europe-west1.run.app/mcp` — **pinned in the ChatGPT app
+>    listing.** OpenAI's dashboard cannot change an existing app's MCP base URL (error:
+>    "MCP base URL must match current version"), even in a new draft version. Deleting this
+>    project during the 2026-08 migration silently broke the published ChatGPT app for ~3 days;
+>    it was fixed by project undelete + redeploy (number-based run.app URLs are deterministic).
+> 2. `https://shipal.apps.yavio.ai` — Cloud Run domain mapping in the same project; used by
+>    docs and everything else. DNS: unproxied CNAME → `ghs.googlehosted.com` in Cloudflare.
+>
+> Decision (2026-08-03): no OpenAI support ticket will be filed — this setup is permanent.
 
 ## What gets deployed
 
@@ -57,9 +71,35 @@ gcloud auth configure-docker europe-west1-docker.pkg.dev --quiet
 
 ## Deploy
 
+Deploy from a clean checkout of the commit you intend to ship — the image is
+tagged with that commit's short SHA, and a dirty tree makes the tag a lie.
+
 ### Build and push the Docker image
 
+Either build path produces the same image. **Cloud Build** needs no local Docker
+and builds natively on amd64; use it when deploying from a machine that is not
+set up for cross-building (or that has no Docker at all).
+
 ```bash
+# Option A — Cloud Build (no local Docker required)
+SHA=$(git rev-parse --short HEAD)
+REPO=europe-west1-docker.pkg.dev/projekt-twenty-crm/shipal/shipal
+
+cat > /tmp/cloudbuild-shipal.yaml <<EOF
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: [build, -t, "$REPO:$SHA", -t, "$REPO:latest", .]
+images: ["$REPO:$SHA", "$REPO:latest"]
+options:
+  machineType: E2_HIGHCPU_8
+EOF
+
+gcloud builds submit --config /tmp/cloudbuild-shipal.yaml \
+  --region europe-west1 --project projekt-twenty-crm .
+```
+
+```bash
+# Option B — local Docker
 SHA=$(git rev-parse --short HEAD)
 REPO=europe-west1-docker.pkg.dev/projekt-twenty-crm/shipal/shipal
 
@@ -94,7 +134,33 @@ gcloud run deploy shipal \
   --update-secrets "SEVENTEEN_TRACK_API_KEY=shipal-17track-key:latest,YAVIO_API_KEY=shipal-yavio-api-key:latest"
 ```
 
-For subsequent deploys you can often pass only `--image` — Cloud Run keeps the previous env vars / secrets / knobs.
+For subsequent deploys you can often pass only `--image` — Cloud Run keeps the previous env vars / secrets / knobs. Confirm rather than assume:
+
+```bash
+gcloud run services describe shipal --region europe-west1 --project projekt-twenty-crm \
+  --format "value(spec.template.spec.containers[0].env[].name)"
+# expect: YAVIO_ENDPOINT;YAVIO_INTENT;SEVENTEEN_TRACK_API_KEY;YAVIO_API_KEY
+```
+
+### Verify the deploy
+
+```bash
+curl -sS https://shipal.apps.yavio.ai/health          # {"ok":true}
+
+# /mcp is stateless — no Mcp-Session-Id handshake needed, call the tool directly
+curl -sS -X POST https://shipal.apps.yavio.ai/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"track-package",
+       "arguments":{"tracking_number":"<a currently-active number>","user_intent":"general_status"}}}'
+```
+
+A tool call emits one `tool_call` and one `track` event into **Shipal Prod** in
+the Yavio dashboard, so a smoke test is also a live analytics check — and it
+does leave a real event in production numbers. Note the tracking number in
+`tests/tracking.spec.ts` has expired at 17Track and now returns
+`invalid_tracking_number`; that still proves the pipeline, but only exercises
+the error path.
 
 ### Rollback
 
@@ -121,12 +187,13 @@ EOF
 gcloud org-policies set-policy /tmp/v2-policy.yaml --project=projekt-twenty-crm
 ```
 
-Requires `roles/orgpolicy.policyAdmin` at the **org level**. A project Owner cannot set this alone.
+Requires `roles/orgpolicy.policyAdmin` at the **org level**. A project Owner cannot set this alone. (Helper scripts exist at `~/set-public-policy.sh` and `~/make-public.sh <service> <region> <project>`.)
 
 ### Artifact Registry + Secret Manager
 
 ```bash
-# Registry
+# Registry — a dedicated `shipal` repo, hence the doubled path segment in
+# europe-west1-docker.pkg.dev/projekt-twenty-crm/shipal/shipal (repo/image)
 gcloud artifacts repositories create shipal \
   --repository-format=docker --location=europe-west1
 
@@ -145,18 +212,18 @@ gcloud artifacts repositories add-iam-policy-binding shipal \
   --role="roles/artifactregistry.reader"
 ```
 
-## Custom Domain (future work)
+## Custom Domain (done 2026-07-31)
 
-Map `shipal.yavio.de` once v1 is stable:
+`shipal.apps.yavio.ai` is mapped to the service:
 
 ```bash
-gcloud run domain-mappings create \
+gcloud beta run domain-mappings create \
   --service shipal \
-  --domain shipal.yavio.de \
-  --region europe-west1
+  --domain shipal.apps.yavio.ai \
+  --region europe-west1 --project projekt-twenty-crm
 ```
 
-Then add the DNS CNAME record pointing to `ghs.googlehosted.com` at the `yavio.de` registrar. SSL provisioning takes ~15 min to a few hours.
+DNS in Cloudflare: unproxied (grey-cloud) CNAME `shipal.apps` → `ghs.googlehosted.com`. Certificate provisioning after a mapping change takes 20–60 min, during which the hostname is unreachable — the `run.app` URL keeps working throughout.
 
 ## Analytics — Yavio Analytics tenant
 
